@@ -6,7 +6,7 @@
 #include <QThread>
 #include <QSettings>
 //#include "pult_connection/pultcontrolsystemprotocols.h"
-//#include "vma/vmacontroller.h"
+#include "NIR/VMA_controller/vma_controller.h"
 #include "math.h"
 #include <qmath.h>
 #include <QTime>
@@ -52,13 +52,13 @@ protected:
     void changeSinSignalFlag(qint8 sinflag);
     void setModellingFlag(bool);
     AH127Cprotocol *AH127C = nullptr;
-//    VMAController* vmaProtocol = nullptr;
+    VMA_controller* vmaProtocol = nullptr;
     //обмен с пультом
 //    ControlSystem::PC_Protocol *pultProtocol = nullptr;
     ROV_Model model;
     QTimer timer;
-//    QThread vmaThread;
-//    bool vmaPowerOffFlag = true;
+    QThread vmaThread;
+//   bool vmaPowerOffFlag = true;
 //   bool modellingFlag = true;
     QTime timeRegulator;
 };

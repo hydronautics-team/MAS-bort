@@ -3,25 +3,30 @@
 CS_ROV::CS_ROV(QObject *parent)
 {
     //logger.logStart();
-    AH127C = new AH127Cprotocol("ttyUSB0");
+    AH127C = new AH127Cprotocol("COM7");
+
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
     QString port = settings.value("portname", "/dev/tty.usbserial-AK06UI59").toString();
-    qint32 baudrate = settings.value("baudrate", 230400).toInt();
+    qint32 baudrate = settings.value("baudrate", 38400).toInt();
     settings.endGroup();
-//    vmaProtocol = new VMAController(port, baudrate);
-//    vmaProtocol->moveToThread(&vmaThread);
-//    QObject::connect(&vmaThread, &QThread::started, vmaProtocol, &VMAController::start);
-//    vmaThread.start();
+
+    X[70][0]=10;
+
+    vmaProtocol = new VMA_controller(port, baudrate);
+    vmaProtocol->moveToThread(&vmaThread);
+    QObject::connect(&vmaThread, &QThread::started, vmaProtocol, &VMA_controller::start);
+    vmaThread.start();
 
 //    pultProtocol = new ControlSystem::PC_Protocol(ConfigFile,"rov_pult");
 
-    qDebug() << "-----start exchange";
+//    qDebug() << "-----start exchange";
 //    pultProtocol->startExchange();
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
-//    timeRegulator.start();
+    timeRegulator.start();
+    X[203][1] = X[206][1] = X[208][1] = 0; //нулевые НУ для интегрирующего звена
 }
 
 void CS_ROV::tick()
@@ -59,57 +64,85 @@ void CS_ROV::readDataFromPult()
     //X[57][0] = pultProtocol->rec_data.thrusterPower;
 
     //changePowerOffFlag(pultProtocol->rec_data.thrusterPower);
-    if (K[0] > 0) setModellingFlag(true);
-    else setModellingFlag(false);
+    //if (K[0] > 0) setModellingFlag(true);
+    //else setModellingFlag(false);
 }
 
 void CS_ROV::readDataFromSensors()
 {
     //kx-pult
-     X[301][0] = AH127C->data.yaw;
-     X[302][0] = AH127C->data.pitch;
-     X[303][0] = AH127C->data.roll;
+     X[61][0] = AH127C->data.yaw;
+     X[62][0] = AH127C->data.pitch;
+     X[63][0] = AH127C->data.roll;
 
-     X[304][0] = AH127C->data.X_accel;
-     X[305][0] = AH127C->data.Y_accel;
-     X[306][0] = AH127C->data.Z_accel;
+     X[64][0] = AH127C->data.X_accel;
+     X[65][0] = AH127C->data.Y_accel;
+     X[66][0] = AH127C->data.Z_accel;
 
-     X[307][0] = AH127C->data.X_rate;
-     X[308][0] = AH127C->data.Y_rate;
-     X[309][0] = AH127C->data.Z_rate;
+     X[67][0] = AH127C->data.X_rate;
+     X[68][0] = AH127C->data.Y_rate;
+     X[69][0] = AH127C->data.Z_rate;
 
-     X[310][0] = AH127C->data.X_magn;
-     X[311][0] = AH127C->data.Y_magn;
-     X[312][0] = AH127C->data.Z_magn;
+     X[70][0] = AH127C->data.X_magn;
+     X[71][0] = AH127C->data.Y_magn;
+     X[72][0] = AH127C->data.Z_magn;
 
-     X[313][0] = AH127C->data.first_qvat;
-     X[314][0] = AH127C->data.second_qvat;
-     X[315][0] = AH127C->data.third_qvat;
-     X[316][0] = AH127C->data.four_qvat;
+     X[73][0] = AH127C->data.first_qvat;
+     X[74][0] = AH127C->data.second_qvat;
+     X[75][0] = AH127C->data.third_qvat;
+     X[76][0] = AH127C->data.four_qvat;
 }
 
 void CS_ROV::regulators()
 {
+    float dt = timeRegulator.elapsed()*0.001;//реальный временной шаг цикла
+    timeRegulator.start();
 
+    if (1) { //САУ тогда разомкнута, ДОПИСАТЬ условие!!!!!!
+            X[101][0] = K[101]*X[51][0]; //управление по курсу, домножается на коэффициент и передается на ВМА
+            X[102][0] = K[102]*X[52][0]; //Uteta
+            X[103][0] = K[103]*X[53][0]; //Ugamma
+            X[104][0] = K[104]*X[54][0]; //Ux
+            X[105][0] = K[105]*X[55][0]; //Uy
+            X[106][0] = K[106]*X[56][0]; //Uz
+
+            resetPsiChannel();
+            resetRollChannel();
+
+    } else if (2) { //САУ в автоматизированном режиме, ДОПИСАТЬ условие
+        if (3) { //замкнут курс
+           X[111][0] = X[51][0] - X[18][0];
+           X[112][0] = X[111][0]*K[111];
+           X[113][0] = X[112][0]*K[112];
+           X[114][0] = X[114][1] + 0.5*(X[113][0] + X[113][1])*dt; //выходное значение интегратора без полок
+
+           if (K[113] != 0){//значит заданы полки
+               X[114][0] = saturation(X[114][0],K[113],K[114]); //выходное значение интегратора с полками
+           }
+           X[114][1] = X[114][0];
+           X[113][1] = X[113][0];
+
+           X[121][0] = X[12][0]*K[116];
+           X[117][0] = X[116][0] - X[121][0];
+           X[101][0] = saturation(X[117][0],K[116],-K[116]);
+        }
+        else {
+            X[101][0] = K[101]*X[51][0]; //Ugamma
+            X[101][0] = saturation(X[117][0],K[116],-K[116]);
+            resetPsiChannel();
+            resetRollChannel();
+
+        }
+    }
 }
 
 void CS_ROV::resetPsiChannel()
 {
-    X[316][1] = X[316][0] =0;
-    X[322][1] = 0;
-    X[329][1] =0;
-    X[325][1] = 0;
-    X[325][1] = X[325][0];
-    X[91][1] = X[91][0];
+    X[114][1] = X[114][0] =0;
 }
 
 void CS_ROV::resetRollChannel()
 {
-    X[355][0] = X[355][1] =0;
-    X[357][1] = X[357][0] = 0;
-    X[362][0]=X[362][1] = X[304][0];
-    X[365][0]=X[365][1] =X[304][0];
-    X[369][0] = X[369][1] = 0;
 
 }
 

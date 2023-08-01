@@ -9,6 +9,7 @@ CONFIG -= app_bundle
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+        NIR/VMA_controller/vma_controller.cpp \
         Parser-BW-AH127C/AH127Cprotocol.cpp \
         cs_rov.cpp \
         kx_pult/kx_protocol.cpp \
@@ -23,6 +24,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
+    NIR/VMA_controller/vma_controller.h \
     Parser-BW-AH127C/AH127Cprotocol.h \
     cs_rov.h \
     kx_pult/kx_protocol.h \

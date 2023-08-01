@@ -289,9 +289,9 @@ void ROV_Model::runge(const float Upl,const float Upp,const float Usl,const floa
     X[14][0]=vy_local;
     X[15][0]=vz_local;
 
-    X[16][0]=Gamma_g;
-    X[17][0]=Tetta_g;
-    X[18][0]=Psi_g;
+    X[16][0]=Gamma_g; //крен
+    X[17][0]=Tetta_g; //дифферент
+    X[18][0]=Psi_g; //курс
 
     X[19][0]=x_global;
     X[20][0]=y_global;
