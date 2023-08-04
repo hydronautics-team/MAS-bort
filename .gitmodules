@@ -4,3 +4,6 @@
 [submodule "NIR"]
 	path = NIR
 	url = https://github.com/lch1204/NIR
+[submodule "protocol_bort_AUV"]
+	path = protocol_bort_AUV
+	url = https://github.com/lch1204/protocol_bort_AUV

@@ -11,8 +11,10 @@
 #include <qmath.h>
 #include <QTime>
 #include <QDebug>
+#include "protocol_bort_AUV/pc_protocol.h"
 
 const QString ConfigFile = "protocols.conf";
+const QString agent = "agent";
 const QString XI = "xi";
 const QString KI = "ki";
 
@@ -43,8 +45,9 @@ protected:
     void readDataFromPult();
     void readDataFromSensors();
     void regulators();
-    void resetPsiChannel();
+    void resetYawChannel();
     void resetRollChannel();
+    void resetPitchChannel();
     void BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux, double Uy, double Uz);
     void writeDataToVMA();
     void writeDataToPult();
@@ -54,12 +57,19 @@ protected:
     AH127Cprotocol *AH127C = nullptr;
     VMA_controller* vmaProtocol = nullptr;
     //обмен с пультом
-//    ControlSystem::PC_Protocol *pultProtocol = nullptr;
+    ControlSystem::PC_Protocol *auvProtocol = nullptr;
     ROV_Model model;
     QTimer timer;
     QThread vmaThread;
 //   bool vmaPowerOffFlag = true;
-//   bool modellingFlag = true;
+    bool modellingFlag = true;
+    quint8 flag_of_mode = 0;
+    quint8 contour_closure_yaw = 0;
+    quint8 contour_closure_pitch = 0;
+    quint8 contour_closure_roll = 0;
+    quint8 contour_closure_march = 0;
+    quint8 contour_closure_lag = 0;
+    quint8 contour_closure_depth = 0;
     QTime timeRegulator;
 };
 

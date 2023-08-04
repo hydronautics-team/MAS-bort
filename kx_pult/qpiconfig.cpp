@@ -397,7 +397,7 @@ QPIConfig::Entry & QPIConfig::addEntry(const QString & name, const QString & val
 		tn += delim + i;
 	}
 	QPIConfig::Branch ch = entry->_children;
-	qSort(ch.begin(), ch.end(), QPIConfig::Entry::compare);
+    std::sort(ch.begin(), ch.end(), QPIConfig::Entry::compare);
 	te = (entry->isLeaf() ? 0 : ch.back());
 	ce = new Entry();
 	ce->delim = delim;
@@ -410,7 +410,7 @@ QPIConfig::Entry & QPIConfig::addEntry(const QString & name, const QString & val
 		if (toRoot) ce->_line = other.size();
 		else {
 			ch = entry->_parent->_children;
-			qSort(ch.begin(), ch.end(), QPIConfig::Entry::compare);
+            std::sort(ch.begin(), ch.end(), QPIConfig::Entry::compare);
 			ce->_line = ch.back()->_line + 1;
 		}
 	} else {

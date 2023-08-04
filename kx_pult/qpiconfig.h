@@ -215,7 +215,7 @@ public:
 	bool isEntryExists(const QString & name) const {return entryExists(&root, name);}
 
 	Branch allTree() {Branch b; foreach (Entry * i, root._children) b << i; return b;}
-	Branch allLeaves() {Branch b; allLeaves(b, &root); qSort(b.begin(), b.end(), Entry::compare); return b;}
+    Branch allLeaves() {Branch b; allLeaves(b, &root); std::sort(b.begin(), b.end(), Entry::compare); return b;}
 	int entryIndex(const QString & name);
 
 	QString getName(uint number) {return entryByIndex(number)._name;}

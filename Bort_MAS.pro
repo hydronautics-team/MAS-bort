@@ -12,6 +12,7 @@ SOURCES += \
         NIR/VMA_controller/vma_controller.cpp \
         Parser-BW-AH127C/AH127Cprotocol.cpp \
         cs_rov.cpp \
+        kx_pult/configdata.cpp \
         kx_pult/kx_protocol.cpp \
         kx_pult/qkx_coeffs.cpp \
         kx_pult/qpiconfig.cpp \
@@ -27,7 +28,11 @@ HEADERS += \
     NIR/VMA_controller/vma_controller.h \
     Parser-BW-AH127C/AH127Cprotocol.h \
     cs_rov.h \
+    kx_pult/configdata.h \
     kx_pult/kx_protocol.h \
     kx_pult/qkx_coeffs.h \
     kx_pult/qpiconfig.h \
+    protocol_bort_AUV/pc_protocol.h \
+    protocol_bort_AUV/protocol.h \
+    protocol_bort_AUV/udp_protocol.h \
     rov_model.h
