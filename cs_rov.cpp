@@ -1,9 +1,10 @@
 #include "cs_rov.h"
+#include <QDebug>
 
 CS_ROV::CS_ROV(QObject *parent)
 {
     //logger.logStart();
-    AH127C = new AH127Cprotocol("COM7");
+    AH127C = new AH127Cprotocol("COM10");
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -38,9 +39,36 @@ void CS_ROV::tick()
 
 }
 
+//void CS_ROV::processDesiredValuesRuchnoiYaw(float inKurs)
+//{
+//    X[1][0] = inKurs * K[1]; }//масштабируем то, что пришло с рукоятки
+//    //X[1] - идёт на выходной ограничитель контура
+//    //K[1] - масштабирует выходное значение с рукоятки в выходное напряжение, которое должно быть в диапазоне +/-10
+
+//void CS_ROV::processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt) {
+//    X[2][0] = inKurs * K[2]; //заданная желаемая скорость по курсу
+//    X[5][0] = newStartValue;
+//    X[6][0] = flagReset;
+//    if (flagReset) { //если хотим сброить начальные условия
+//        X[3][0] = X[3][1] = newStartValue;
+//    }
+//    //интегрируем значения с рукоятки
+//    integrate(X[2][0], X[3][0], X[3][1], dt);
+//    if (K[4]!=0) { //если есть ограничения на интегрирование
+//    //может быть полезно для дифферента, крена или глубины, для курса
+//    // спорно)
+//        X[4][0] = saturation(X[3][0], K[3], K[5]);
+//    }
+//}
+
+//void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
+//    output = prevOutput + dt*input;
+//    prevOutput = output;
+//}
+
 void CS_ROV::resetValues()
 {
-//    vmaProtocol->setValues(0, 0, 0, 0, 0,0,0,0,true);
+    vmaProtocol->setValues(0, 0, 0, 0, 0, 0);
 
 }
 
@@ -98,6 +126,8 @@ void CS_ROV::regulators()
 
     if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_HANDLE) { //САУ тогда разомкнута, ДОПИСАТЬ условие!!!!!!
             flag_of_mode = 0;
+
+            //processDesiredValuesRuchnoiYaw(float (X[51][0]));
             X[101][0] = K[101]*X[51][0]; //управление по курсу, домножается на коэффициент и передается на ВМА
             X[102][0] = K[102]*X[52][0]; //Uteta
             X[103][0] = K[103]*X[53][0]; //Ugamma
@@ -113,6 +143,7 @@ void CS_ROV::regulators()
         flag_of_mode = 1;
         if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
            contour_closure_yaw = 1;
+           qDebug() << contour_closure_yaw <<"ручной режим";
            X[104][0] = K[104]*X[54][0]; //Ux  - марш
 
            X[111][0] = X[51][0] - X[18][0];
@@ -165,21 +196,21 @@ void CS_ROV::BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux, double
     X[140][0] = (K[40]*Ux + K[41]*Uy + K[42]*Uz + K[43]*Ugamma + K[44]*Uteta + K[45]*Upsi)*K[46];//U4
     X[150][0] = (K[50]*Ux + K[51]*Uy + K[52]*Uz + K[53]*Ugamma + K[54]*Uteta + K[55]*Upsi)*K[56];//U5
     X[160][0] = (K[60]*Ux + K[61]*Uy + K[62]*Uz + K[63]*Ugamma + K[64]*Uteta + K[65]*Upsi)*K[66];//U6
-//    X[111][0] = limit(X[110][0],K[100]);  // K[100] - уже занят!!!!!!
-//    X[121][0] = limit(X[120][0],K[100]);
-//    X[131][0] = limit(X[130][0],K[100]);
-//    X[141][0] = limit(X[140][0],K[100]);
-//    X[151][0] = limit(X[150][0],K[100]);
-//    X[161][0] = limit(X[160][0],K[100]);
+    X[111][0] = limit(X[110][0],K[200]);  // K[100] - уже занят!!!!!!
+    X[121][0] = limit(X[120][0],K[200]);
+    X[131][0] = limit(X[130][0],K[200]);
+    X[141][0] = limit(X[140][0],K[200]);
+    X[151][0] = limit(X[150][0],K[200]);
+    X[161][0] = limit(X[160][0],K[200]);
 
 
 }
 
 void CS_ROV::writeDataToPult()
 {
-    auvProtocol->send_data.header.senderID;
-    auvProtocol->send_data.header.receiverID;
-    auvProtocol->send_data.header.msgSize;
+    auvProtocol->send_data.headerSwap.senderID;
+    auvProtocol->send_data.headerSwap.receiverID;
+    auvProtocol->send_data.headerSwap.msgSize;
 
     auvProtocol->send_data.auvData.modeReal = flag_of_mode;
     auvProtocol->send_data.auvData.controlReal.yaw = contour_closure_yaw;
@@ -239,7 +270,7 @@ void CS_ROV::writeDataToVMA()
         model.tick(X[110][0], X[120][0], X[130][0], X[140][0], X[150][0], X[160][0], 0.01);
     }
     else {
-//      vmaProtocol->setValues(X[110][0], X[120][0], X[130][0], X[140][0], X[150][0], X[160][0]);
+      vmaProtocol->setValues(X[111][0], X[121][0], X[131][0], X[141][0], X[151][0], X[161][0]);
     }
 }
 

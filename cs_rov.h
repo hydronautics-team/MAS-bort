@@ -42,6 +42,10 @@ public:
     }
     float saturation(float input,  float max, float min);
 protected:
+    void processDesiredValuesRuchnoiYaw(float inKurs);
+    void processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt);
+    void integrate(double &input, double &output, double &prevOutput, double dt);
+
     void readDataFromPult();
     void readDataFromSensors();
     void regulators();
@@ -63,7 +67,7 @@ protected:
     QThread vmaThread;
 //   bool vmaPowerOffFlag = true;
     bool modellingFlag = true;
-    quint8 flag_of_mode = 0;
+    quint8 flag_of_mode = 100;
     quint8 contour_closure_yaw = 0;
     quint8 contour_closure_pitch = 0;
     quint8 contour_closure_roll = 0;
