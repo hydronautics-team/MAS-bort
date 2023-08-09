@@ -1,8 +1,9 @@
-build-Bort_MAS-Desktop_Qt_5_15_2_MinGW_64_bit-Debug/
+build-Bort_MAS-Desktop_Qt_5_15_2_MinGW_64_bit-Debug
 
 # This file is used to ignore files which are generated
 # ----------------------------------------------------------------------------
 
+protocols.conf
 *~
 *.autosave
 *.a
@@ -71,7 +72,6 @@ Thumbs.db
 # Binaries
 # --------
 *.dll
-*.exe
 
 
 

@@ -90,7 +90,7 @@ void CS_ROV::readDataFromPult()
     X[55][0] = auvProtocol->rec_data.controlData.lag;
     X[56][0] = auvProtocol->rec_data.controlData.depth;
 
-    if (K[0] > 0) setModellingFlag(true);
+    if (auvProtocol->rec_data.modeAUV_selection == true) setModellingFlag(true);
     else setModellingFlag(false);
 }
 
