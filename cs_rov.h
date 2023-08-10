@@ -41,9 +41,11 @@ public:
         return (T(0) < val) - (val < T(0));
     }
     float saturation(float input,  float max, float min);
+    double yawErrorCalculation(float yawDesiredDeg, float yawCurrentDeg);
+    int sign(double input);
 protected:
-    void processDesiredValuesRuchnoiYaw(float inKurs);
-    void processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt);
+    void processDesiredValuesAutomatiz(double inputFromRUD, double &output, double &prev_output, double scaleK,
+                                       bool flagLimit = false, double maxValue=180, double dt=0.01);
     void integrate(double &input, double &output, double &prevOutput, double dt);
 
     void readDataFromPult();
@@ -74,6 +76,8 @@ protected:
     quint8 contour_closure_march = 0;
     quint8 contour_closure_lag = 0;
     quint8 contour_closure_depth = 0;
+    qint8 flag_switch_mode_1 = true;
+    qint8 flag_switch_mode_2 = false;
     QTime timeRegulator;
 };
 

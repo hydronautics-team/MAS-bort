@@ -4,7 +4,7 @@
 CS_ROV::CS_ROV(QObject *parent)
 {
     //logger.logStart();
-    AH127C = new AH127Cprotocol("COM10");
+    AH127C = new AH127Cprotocol("ttyUSB0");
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -24,7 +24,7 @@ CS_ROV::CS_ROV(QObject *parent)
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
-//    timeRegulator.start();
+    timeRegulator.start();
 //&&&    X[203][1] = X[206][1] = X[208][1] = 0; //нулевые НУ для интегрирующего звена
 }
 
@@ -38,12 +38,6 @@ void CS_ROV::tick()
     writeDataToPult();
 
 }
-
-//void CS_ROV::processDesiredValuesRuchnoiYaw(float inKurs)
-//{
-//    X[1][0] = inKurs * K[1]; }//масштабируем то, что пришло с рукоятки
-//    //X[1] - идёт на выходной ограничитель контура
-//    //K[1] - масштабирует выходное значение с рукоятки в выходное напряжение, которое должно быть в диапазоне +/-10
 
 //void CS_ROV::processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt) {
 //    X[2][0] = inKurs * K[2]; //заданная желаемая скорость по курсу
@@ -61,10 +55,10 @@ void CS_ROV::tick()
 //    }
 //}
 
-//void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
-//    output = prevOutput + dt*input;
-//    prevOutput = output;
-//}
+void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
+    output = prevOutput + dt*input;
+    prevOutput = output;
+}
 
 void CS_ROV::resetValues()
 {
@@ -77,6 +71,40 @@ float CS_ROV::saturation(float input, float max, float min)
     if (input>= max) return max;
     else if (input <=min) return min;
     else return input;
+}
+
+void CS_ROV::processDesiredValuesAutomatiz(double inputFromRUD, double &output, double &prev_output,
+                                           double scaleK, bool flagLimit, double maxValue, double dt) {
+    double inputScaled = inputFromRUD*scaleK;
+    integrate(inputScaled,output,prev_output,dt);
+    if (flagLimit){
+        saturation(output,maxValue,-maxValue);
+    }
+}
+
+double CS_ROV::yawErrorCalculation(float yawDesiredDeg, float yawCurrentDeg)
+{
+    double l0 =0, l2 =0;
+    double Krad = M_PI/180.0;
+    double Kdeg = 180/M_PI;
+    double desiredPsi = yawDesiredDeg*Krad;
+    double currentPsi = yawCurrentDeg*Krad;
+    l0=cos(desiredPsi/2)*cos(currentPsi/2)+sin(desiredPsi/2)*sin(currentPsi/2);
+    l2=cos(desiredPsi/2)*sin(currentPsi/2)-cos(currentPsi/2)*sin(desiredPsi/2);
+    if (fabs(l0)>1) l0=sign(l0)*1;
+    if (l0<0) l0*=-1;
+    else l2 *=-1;
+    double temp = 2*acos(l0);
+    double temp_deg = 2*acos(l0)*Kdeg;
+    double temp_deg_sign = 2*acos(l0)*sign(l2)*Kdeg;
+    return temp_deg_sign;
+
+}
+
+int CS_ROV::sign(double input)
+{
+    if (input>=0) return 1;
+    else return -1;
 }
 
 void CS_ROV::readDataFromPult()
@@ -97,7 +125,8 @@ void CS_ROV::readDataFromPult()
 void CS_ROV::readDataFromSensors()
 {
     //kx-pult
-     X[61][0] = AH127C->data.yaw;
+    X[61][0]=60;
+//     X[61][0] = AH127C->data.yaw;
      X[62][0] = AH127C->data.pitch;
      X[63][0] = AH127C->data.roll;
 
@@ -124,10 +153,16 @@ void CS_ROV::regulators()
     float dt = timeRegulator.elapsed()*0.001;//реальный временной шаг цикла
     timeRegulator.start();
 
-    if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_HANDLE) { //САУ тогда разомкнута, ДОПИСАТЬ условие!!!!!!
+    if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_HANDLE) { //САУ тогда разомкнута
+            if (flag_switch_mode_1 == false) {
+                X[5][0] = X[5][1] = 0;
+                flag_switch_mode_1 = true;
+                flag_switch_mode_2 = false;
+                qDebug() << contour_closure_yaw <<"ручной режим";
+            }
+
             flag_of_mode = 0;
 
-            //processDesiredValuesRuchnoiYaw(float (X[51][0]));
             X[101][0] = K[101]*X[51][0]; //управление по курсу, домножается на коэффициент и передается на ВМА
             X[102][0] = K[102]*X[52][0]; //Uteta
             X[103][0] = K[103]*X[53][0]; //Ugamma
@@ -139,14 +174,23 @@ void CS_ROV::regulators()
             resetRollChannel();
             resetPitchChannel();
 
-    } else if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_AUTOMATED) { //САУ в автоматизированном режиме, ДОПИСАТЬ условие
+    } else if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_AUTOMATED) { //САУ в автоматизированном режиме
         flag_of_mode = 1;
         if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
+           if (flag_switch_mode_2 == false) {
+                X[5][1]=X[61][0];
+                flag_switch_mode_2 = true;
+                flag_switch_mode_1 = false;
+                qDebug() << contour_closure_yaw <<"автоматизированный режим";
+           }
            contour_closure_yaw = 1;
-           qDebug() << contour_closure_yaw <<"ручной режим";
-           X[104][0] = K[104]*X[54][0]; //Ux  - марш
 
-           X[111][0] = X[51][0] - X[61][0];
+           X[104][0] = K[104]*X[54][0]; //Ux  - марш
+           //контур курса
+           processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]);
+
+          // X[111][0] = X[5][0] - X[61][0];
+           X[111][0] = yawErrorCalculation(X[5][0],X[61][0]);
            X[112][0] = X[111][0]*K[111];
            X[113][0] = X[112][0]*K[112];
            X[114][0] = X[114][1] + 0.5*(X[113][0] + X[113][1])*dt; //выходное значение интегратора без полок
@@ -196,12 +240,12 @@ void CS_ROV::BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux, double
     X[140][0] = (K[40]*Ux + K[41]*Uy + K[42]*Uz + K[43]*Ugamma + K[44]*Uteta + K[45]*Upsi)*K[46];//U4
     X[150][0] = (K[50]*Ux + K[51]*Uy + K[52]*Uz + K[53]*Ugamma + K[54]*Uteta + K[55]*Upsi)*K[56];//U5
     X[160][0] = (K[60]*Ux + K[61]*Uy + K[62]*Uz + K[63]*Ugamma + K[64]*Uteta + K[65]*Upsi)*K[66];//U6
-    X[111][0] = limit(X[110][0],K[200]);  // K[100] - уже занят!!!!!!
-    X[121][0] = limit(X[120][0],K[200]);
-    X[131][0] = limit(X[130][0],K[200]);
-    X[141][0] = limit(X[140][0],K[200]);
-    X[151][0] = limit(X[150][0],K[200]);
-    X[161][0] = limit(X[160][0],K[200]);
+    X[211][0] = limit(X[110][0],K[200]);  // K[100] - уже занят!!!!!!
+    X[221][0] = limit(X[120][0],K[200]);
+    X[231][0] = limit(X[130][0],K[200]);
+    X[241][0] = limit(X[140][0],K[200]);
+    X[251][0] = limit(X[150][0],K[200]);
+    X[261][0] = limit(X[160][0],K[200]);
 
 
 }
@@ -267,10 +311,10 @@ void CS_ROV::setModellingFlag(bool flag)
 void CS_ROV::writeDataToVMA()
 {
     if (modellingFlag) {//режим модели
-        model.tick(X[110][0], X[120][0], X[130][0], X[140][0], X[150][0], X[160][0], 0.01);
+        model.tick(X[211][0], X[221][0], X[231][0], X[241][0], X[251][0], X[261][0], 0.01);
     }
     else {
-      vmaProtocol->setValues(X[111][0], X[121][0], X[131][0], X[141][0], X[151][0], X[161][0]);
+      vmaProtocol->setValues(X[211][0], X[221][0], X[231][0], X[241][0], X[251][0], X[261][0]);
     }
 }
 
