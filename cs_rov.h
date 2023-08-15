@@ -48,7 +48,6 @@ protected:
                                        bool flagLimit = false, double maxValue=180, double dt=0.01);
     void integrate(double &input, double &output, double &prevOutput, double dt);
     double gradToRadian(double grad);
-    void integrate_for_angle();
 
     void readDataFromPult();
     void readDataFromSensors();

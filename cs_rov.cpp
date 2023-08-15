@@ -32,7 +32,6 @@ void CS_ROV::tick()
 {
     readDataFromPult();
     readDataFromSensors();
-    integrate_for_angle();
     regulators();
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
@@ -150,14 +149,6 @@ void CS_ROV::readDataFromSensors()
      X[76][0] = AH127C->data.four_qvat;
 }
 
-void CS_ROV::integrate_for_angle() {
-
-     integrate(X[69][0],X[91][0],X[91][1],0.01);
-//     float tetta = gradToRadian(X[62][0]);
-//     float gamma = gradToRadian(X[63][0]);
-//     double dPsi = (X[68][0]) * sin(gamma)/cos(tetta)  + cos(gamma) * X[69][0]/cos(tetta);
-//     integrate(dPsi,X[91][0],X[91][1],0.01);
-}
 
 void CS_ROV::regulators()
 {
