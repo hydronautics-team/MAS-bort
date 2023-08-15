@@ -47,6 +47,8 @@ protected:
     void processDesiredValuesAutomatiz(double inputFromRUD, double &output, double &prev_output, double scaleK,
                                        bool flagLimit = false, double maxValue=180, double dt=0.01);
     void integrate(double &input, double &output, double &prevOutput, double dt);
+    double gradToRadian(double grad);
+    void integrate_for_angle();
 
     void readDataFromPult();
     void readDataFromSensors();
@@ -67,7 +69,7 @@ protected:
     ROV_Model model;
     QTimer timer;
     QThread vmaThread;
-//   bool vmaPowerOffFlag = true;
+//  bool vmaPowerOffFlag = true;
     bool modellingFlag = true;
     quint8 flag_of_mode = 100;
     quint8 contour_closure_yaw = 0;

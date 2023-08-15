@@ -4,7 +4,7 @@
 CS_ROV::CS_ROV(QObject *parent)
 {
     //logger.logStart();
-    AH127C = new AH127Cprotocol("ttyUSB0");
+    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -25,13 +25,14 @@ CS_ROV::CS_ROV(QObject *parent)
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
     timeRegulator.start();
-//&&&    X[203][1] = X[206][1] = X[208][1] = 0; //нулевые НУ для интегрирующего звена
+    X[91][0]=X[91][1]=0; //нулевые НУ для интегрирования угловой скорости и нахождения угла курса
 }
 
 void CS_ROV::tick()
 {
     readDataFromPult();
     readDataFromSensors();
+    integrate_for_angle();
     regulators();
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
@@ -58,6 +59,10 @@ void CS_ROV::tick()
 void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
     output = prevOutput + dt*input;
     prevOutput = output;
+}
+
+double CS_ROV::gradToRadian(double grad) {
+    return grad*3.14/180;
 }
 
 void CS_ROV::resetValues()
@@ -110,11 +115,9 @@ int CS_ROV::sign(double input)
 void CS_ROV::readDataFromPult()
 {
     X[51][0] = auvProtocol->rec_data.controlData.yaw;
-    //X[51][0] = 50;
     X[52][0] = auvProtocol->rec_data.controlData.pitch;
     X[53][0] = auvProtocol->rec_data.controlData.roll;
     X[54][0] = auvProtocol->rec_data.controlData.march;
-    //X[54][0] = 2;
     X[55][0] = auvProtocol->rec_data.controlData.lag;
     X[56][0] = auvProtocol->rec_data.controlData.depth;
 
@@ -124,9 +127,8 @@ void CS_ROV::readDataFromPult()
 
 void CS_ROV::readDataFromSensors()
 {
-    //kx-pult
-    X[61][0]=60;
-//     X[61][0] = AH127C->data.yaw;
+     //kx-pult
+     X[61][0] = AH127C->data.yaw;
      X[62][0] = AH127C->data.pitch;
      X[63][0] = AH127C->data.roll;
 
@@ -146,6 +148,15 @@ void CS_ROV::readDataFromSensors()
      X[74][0] = AH127C->data.second_qvat;
      X[75][0] = AH127C->data.third_qvat;
      X[76][0] = AH127C->data.four_qvat;
+}
+
+void CS_ROV::integrate_for_angle() {
+
+     integrate(X[69][0],X[91][0],X[91][1],0.01);
+//     float tetta = gradToRadian(X[62][0]);
+//     float gamma = gradToRadian(X[63][0]);
+//     double dPsi = (X[68][0]) * sin(gamma)/cos(tetta)  + cos(gamma) * X[69][0]/cos(tetta);
+//     integrate(dPsi,X[91][0],X[91][1],0.01);
 }
 
 void CS_ROV::regulators()
@@ -178,7 +189,7 @@ void CS_ROV::regulators()
         flag_of_mode = 1;
         if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
            if (flag_switch_mode_2 == false) {
-                X[5][1]=X[61][0];
+                X[5][1]=X[91][0];
                 flag_switch_mode_2 = true;
                 flag_switch_mode_1 = false;
                 qDebug() << contour_closure_yaw <<"автоматизированный режим";
@@ -186,11 +197,12 @@ void CS_ROV::regulators()
            contour_closure_yaw = 1;
 
            X[104][0] = K[104]*X[54][0]; //Ux  - марш
-           //контур курса
-           processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]);
 
-          // X[111][0] = X[5][0] - X[61][0];
-           X[111][0] = yawErrorCalculation(X[5][0],X[61][0]);
+           //контур курса
+           integrate(X[69][0],X[91][0],X[91][1],0.01); //интегрируем показание Z_rate для нахождения текущего угла курса
+           processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
+           // X[111][0] = X[5][0] - X[61][0];
+           X[111][0] = yawErrorCalculation(X[5][0],X[91][0]); //учет предела работы датчика, пересчет кратчайшего пути
            X[112][0] = X[111][0]*K[111];
            X[113][0] = X[112][0]*K[112];
            X[114][0] = X[114][1] + 0.5*(X[113][0] + X[113][1])*dt; //выходное значение интегратора без полок
@@ -240,7 +252,7 @@ void CS_ROV::BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux, double
     X[140][0] = (K[40]*Ux + K[41]*Uy + K[42]*Uz + K[43]*Ugamma + K[44]*Uteta + K[45]*Upsi)*K[46];//U4
     X[150][0] = (K[50]*Ux + K[51]*Uy + K[52]*Uz + K[53]*Ugamma + K[54]*Uteta + K[55]*Upsi)*K[56];//U5
     X[160][0] = (K[60]*Ux + K[61]*Uy + K[62]*Uz + K[63]*Ugamma + K[64]*Uteta + K[65]*Upsi)*K[66];//U6
-    X[211][0] = limit(X[110][0],K[200]);  // K[100] - уже занят!!!!!!
+    X[211][0] = limit(X[110][0],K[200]);
     X[221][0] = limit(X[120][0],K[200]);
     X[231][0] = limit(X[130][0],K[200]);
     X[241][0] = limit(X[140][0],K[200]);
