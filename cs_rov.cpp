@@ -3,7 +3,6 @@
 
 CS_ROV::CS_ROV(QObject *parent)
 {
-    //logger.logStart();
     AH127C = new AH127Cprotocol("ttyUSB1");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
@@ -18,9 +17,17 @@ CS_ROV::CS_ROV(QObject *parent)
     vmaThread.start();
 
     auvProtocol = new ControlSystem::PC_Protocol(ConfigFile,"agent");
-
     qDebug() << "-----start exchange";
     auvProtocol->startExchange();
+
+    //управление питанием
+    wiringPiSetup () ;
+    pinMode (27, OUTPUT) ;
+    pinMode (28, OUTPUT) ;
+    digitalWrite (27, LOW) ;
+    digitalWrite (28, LOW) ;
+    connect(&timer_power, &QTimer::timeout, this, &Power_Select::tick_power);
+    timer_power.start(1000);
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
@@ -295,14 +302,32 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.dataAH127C.quat[3] = X[76][0];
 }
 
-//void CS_ROV::changePowerOffFlag(qint8 flag)
-//{
-//    if (vmaPowerOffFlag!=static_cast<bool>(flag)) {
-//        vmaPowerOffFlag = static_cast<bool>(flag);
-//        resetValues();
-//    }
-//
-//}
+void CS_ROV:: tick_power()
+  {
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
+            qDebug() << "1";
+            digitalWrite (27, LOW) ;
+            digitalWrite (28, LOW) ;
+      }
+      else if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
+          digitalWrite (27, LOW) ;
+          digitalWrite (28, HIGH) ;
+          qDebug() << "2";
+      }
+      else if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
+          digitalWrite (27, HIGH) ;
+          digitalWrite (28, LOW) ;
+          qDebug() << "3";
+      }
+      else if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
+          digitalWrite (27, HIGH) ;
+          digitalWrite (28, HIGH) ;
+          qDebug() << "4";
+      }
+      else {
+          qDebug() << "все плохо с питанием";
+      }
+  }
 
 
 void CS_ROV::setModellingFlag(bool flag)

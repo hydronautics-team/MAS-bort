@@ -19,6 +19,9 @@ SOURCES += \
         main.cpp \
         rov_model.cpp
 
+LIBS += -L"/home/hydronautics/rpi/sysroot/usr/lib"
+LIBS += -lwiringPi
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

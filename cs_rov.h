@@ -12,6 +12,7 @@
 #include <QTime>
 #include <QDebug>
 #include "protocol_bort_AUV/pc_protocol.h"
+#include "wiringPi.h"
 
 const QString ConfigFile = "protocols.conf";
 const QString agent = "agent";
@@ -26,12 +27,14 @@ public:
 
     void start(int dt){
         timer.start(dt);
+        timer_power.start(dt);
+
     }
 
 public slots:
     void tick();
     void resetValues();
-
+    void tick_power();
 public:
     double limit (double value, double limit){
         if(fabs(value)>limit) return (limit*sgn(value));
@@ -43,6 +46,7 @@ public:
     float saturation(float input,  float max, float min);
     double yawErrorCalculation(float yawDesiredDeg, float yawCurrentDeg);
     int sign(double input);
+
 protected:
     void processDesiredValuesAutomatiz(double inputFromRUD, double &output, double &prev_output, double scaleK,
                                        bool flagLimit = false, double maxValue=180, double dt=0.01);
@@ -63,10 +67,12 @@ protected:
     void setModellingFlag(bool);
     AH127Cprotocol *AH127C = nullptr;
     VMA_controller* vmaProtocol = nullptr;
+    power_Mode pMode;
     //обмен с пультом
     ControlSystem::PC_Protocol *auvProtocol = nullptr;
     ROV_Model model;
     QTimer timer;
+    QTimer timer_power;
     QThread vmaThread;
 //  bool vmaPowerOffFlag = true;
     bool modellingFlag = true;
