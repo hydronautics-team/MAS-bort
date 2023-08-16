@@ -26,7 +26,7 @@ CS_ROV::CS_ROV(QObject *parent)
     pinMode (28, OUTPUT) ;
     digitalWrite (27, LOW) ;
     digitalWrite (28, LOW) ;
-    connect(&timer_power, &QTimer::timeout, this, &Power_Select::tick_power);
+    connect(&timer_power, &QTimer::timeout, this, &CS_ROV::tick_power);
     timer_power.start(1000);
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
