@@ -4,7 +4,7 @@
 CS_ROV::CS_ROV(QObject *parent)
 {
     //logger.logStart();
-    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
+    AH127C = new AH127Cprotocol("ttyUSB1");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -137,7 +137,7 @@ void CS_ROV::readDataFromSensors()
 
      X[67][0] = AH127C->data.X_rate;
      X[68][0] = AH127C->data.Y_rate;
-     X[69][0] = AH127C->data.Z_rate;
+     X[69][0] = -AH127C->data.Z_rate;
 
      X[70][0] = AH127C->data.X_magn;
      X[71][0] = AH127C->data.Y_magn;
@@ -154,6 +154,7 @@ void CS_ROV::regulators()
 {
     float dt = timeRegulator.elapsed()*0.001;//реальный временной шаг цикла
     timeRegulator.start();
+    integrate(X[69][0],X[91][0],X[91][1],dt); //интегрируем показание Z_rate для нахождения текущего угла курса
 
     if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_HANDLE) { //САУ тогда разомкнута
             if (flag_switch_mode_1 == false) {
@@ -181,6 +182,7 @@ void CS_ROV::regulators()
         if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
            if (flag_switch_mode_2 == false) {
                 X[5][1]=X[91][0];
+                X[5][0] = 0;
                 flag_switch_mode_2 = true;
                 flag_switch_mode_1 = false;
                 qDebug() << contour_closure_yaw <<"автоматизированный режим";
@@ -190,9 +192,8 @@ void CS_ROV::regulators()
            X[104][0] = K[104]*X[54][0]; //Ux  - марш
 
            //контур курса
-           integrate(X[69][0],X[91][0],X[91][1],0.01); //интегрируем показание Z_rate для нахождения текущего угла курса
            processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
-           // X[111][0] = X[5][0] - X[61][0];
+           //X[111][0] = X[5][0] - X[91][0];
            X[111][0] = yawErrorCalculation(X[5][0],X[91][0]); //учет предела работы датчика, пересчет кратчайшего пути
            X[112][0] = X[111][0]*K[111];
            X[113][0] = X[112][0]*K[112];
@@ -207,7 +208,8 @@ void CS_ROV::regulators()
            X[116][0] = X[114][0] + X[112][0];
 
            X[121][0] = X[69][0]*K[118];
-           X[117][0] = X[116][0] - X[121][0] + X[51][0]*K[119];
+           X[119][0] = X[51][0]*K[119];
+           X[117][0] = X[116][0] - X[121][0] + X[119][0];
            X[118][0] = saturation(X[117][0],K[116],-K[116]);
            X[101][0] = X[118][0]*K[100];
         }
