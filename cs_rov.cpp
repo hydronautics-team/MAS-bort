@@ -3,7 +3,7 @@
 
 CS_ROV::CS_ROV(QObject *parent)
 {
-    AH127C = new AH127Cprotocol("ttyUSB1");  //ttyUSB0
+    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -39,11 +39,39 @@ void CS_ROV::tick()
 {
     readDataFromPult();
     readDataFromSensors();
+    calibration();
     regulators();
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
     writeDataToPult();
 
+}
+
+void CS_ROV::calibration() {
+    if (проверка флага калибровки) { //начать калибровку
+        char cmd_compas_1[5]; //задание формата посылки и частоты выдачи данных, 2.15 и 2.17
+        cmd_compas_1[0] = 0x77;
+        cmd_compas_1[1] = 0x04;
+        cmd_compas_1[2] = 0x00;
+        cmd_compas_1[3] = 0x11;
+        cmd_compas_1[4] = 0x15;
+        AH127C->m_port.write(cmd_compas_1, 5);
+        AH127C->m_port.waitForBytesWritten();
+    }
+        auvProtocol->send_data.dataAH127C.yaw = X[61][0]; что-то по типу этого пеердать на пульт
+
+    if (проверка флага калибровки на окончание) {
+        char cmd_compas_2[6]; //задание формата посылки и частоты выдачи данных, 2.15 и 2.17
+        cmd_compas_2[0] = 0x77;
+        cmd_compas_2[1] = 0x04;
+        cmd_compas_2[2] = 0x00;
+        cmd_compas_2[3] = 0x12;
+        cmd_compas_2[4] = 0x16;
+        cmd_compas_2[5] = 0x2C;
+        AH127C->m_port.write(cmd_compas_2, 6);
+        AH127C->m_port.waitForBytesWritten();
+    }
+    //auvProtocol->send_data.dataAH127C.pitch = X[62][0];  что-то по типу этого пеердать на пульт
 }
 
 //void CS_ROV::processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt) {

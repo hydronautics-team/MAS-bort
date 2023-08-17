@@ -54,6 +54,7 @@ protected:
     double gradToRadian(double grad);
 
     void readDataFromPult();
+    void calibration();
     void readDataFromSensors();
     void regulators();
     void resetYawChannel();
