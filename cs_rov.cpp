@@ -157,7 +157,7 @@ void CS_ROV::readDataFromPult()
     X[55][0] = auvProtocol->rec_data.controlData.lag;
     X[56][0] = auvProtocol->rec_data.controlData.depth;
 
-    if (auvProtocol->rec_data.modeAUV_selection == true) setModellingFlag(true);
+    if (auvProtocol->rec_data.modeAUV_selection == 1) setModellingFlag(true);
     else setModellingFlag(false);
 }
 
@@ -193,7 +193,7 @@ void CS_ROV::regulators()
     timeRegulator.start();
     integrate(X[69][0],X[91][0],X[91][1],dt); //интегрируем показание Z_rate для нахождения текущего угла курса
 
-    if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_HANDLE) { //САУ тогда разомкнута
+    if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_MANUAL) { //САУ тогда разомкнута
             if (flag_switch_mode_1 == false) {
                 X[5][0] = X[5][1] = 0;
                 flag_switch_mode_1 = true;
