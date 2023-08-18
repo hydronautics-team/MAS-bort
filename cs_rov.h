@@ -51,7 +51,6 @@ protected:
     void processDesiredValuesAutomatiz(double inputFromRUD, double &output, double &prev_output, double scaleK,
                                        bool flagLimit = false, double maxValue=180, double dt=0.01);
     void integrate(double &input, double &output, double &prevOutput, double dt);
-    double gradToRadian(double grad);
 
     void readDataFromPult();
     void calibration();

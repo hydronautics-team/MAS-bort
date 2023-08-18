@@ -48,7 +48,7 @@ void CS_ROV::tick()
 }
 
 void CS_ROV::calibration() {
-    if (проверка флага калибровки) { //начать калибровку
+    if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку
         char cmd_compas_1[5]; //задание формата посылки и частоты выдачи данных, 2.15 и 2.17
         cmd_compas_1[0] = 0x77;
         cmd_compas_1[1] = 0x04;
@@ -58,9 +58,9 @@ void CS_ROV::calibration() {
         AH127C->m_port.write(cmd_compas_1, 5);
         AH127C->m_port.waitForBytesWritten();
     }
-        auvProtocol->send_data.dataAH127C.yaw = X[61][0]; что-то по типу этого пеердать на пульт
+        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
 
-    if (проверка флага калибровки на окончание) {
+    if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) {
         char cmd_compas_2[6]; //задание формата посылки и частоты выдачи данных, 2.15 и 2.17
         cmd_compas_2[0] = 0x77;
         cmd_compas_2[1] = 0x04;
@@ -71,7 +71,7 @@ void CS_ROV::calibration() {
         AH127C->m_port.write(cmd_compas_2, 6);
         AH127C->m_port.waitForBytesWritten();
     }
-    //auvProtocol->send_data.dataAH127C.pitch = X[62][0];  что-то по типу этого пеердать на пульт
+        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
 }
 
 //void CS_ROV::processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt) {
@@ -93,10 +93,6 @@ void CS_ROV::calibration() {
 void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
     output = prevOutput + dt*input;
     prevOutput = output;
-}
-
-double CS_ROV::gradToRadian(double grad) {
-    return grad*3.14/180;
 }
 
 void CS_ROV::resetValues()
