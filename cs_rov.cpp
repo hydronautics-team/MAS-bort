@@ -26,8 +26,8 @@ CS_ROV::CS_ROV(QObject *parent)
     pinMode (28, OUTPUT) ;
     digitalWrite (27, LOW) ;
     digitalWrite (28, LOW) ;
-    connect(&timer_power, &QTimer::timeout, this, &CS_ROV::tick_power);
-    timer_power.start(1000);
+//    connect(&timer_power, &QTimer::timeout, this, &CS_ROV::tick_power);
+//    timer_power.start(1000);
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
@@ -44,6 +44,12 @@ void CS_ROV::tick()
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
     writeDataToPult();
+    ms++;
+        if (ms>=100-7)
+        {
+            ms = 0;
+            timer_power_power();
+        }
 
 }
 
@@ -326,30 +332,27 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.dataAH127C.quat[3] = X[76][0];
 }
 
-void CS_ROV:: tick_power()
+void CS_ROV:: timer_power_power()
   {
       if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
             qDebug() << "1";
             digitalWrite (27, LOW) ;
             digitalWrite (28, LOW) ;
       }
-      else if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
           digitalWrite (27, LOW) ;
           digitalWrite (28, HIGH) ;
           qDebug() << "2";
       }
-      else if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
           digitalWrite (27, HIGH) ;
           digitalWrite (28, LOW) ;
           qDebug() << "3";
       }
-      else if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
           digitalWrite (27, HIGH) ;
           digitalWrite (28, HIGH) ;
           qDebug() << "4";
-      }
-      else {
-          qDebug() << "все плохо с питанием";
       }
   }
 

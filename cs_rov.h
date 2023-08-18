@@ -27,14 +27,14 @@ public:
 
     void start(int dt){
         timer.start(dt);
-        timer_power.start(dt);
+//        timer_power.start(dt);
 
     }
 
 public slots:
     void tick();
     void resetValues();
-    void tick_power();
+//    void tick_power();
 public:
     double limit (double value, double limit){
         if(fabs(value)>limit) return (limit*sgn(value));
@@ -56,6 +56,7 @@ protected:
     void calibration();
     void readDataFromSensors();
     void regulators();
+    void timer_power_power();
     void resetYawChannel();
     void resetRollChannel();
     void resetPitchChannel();
@@ -86,6 +87,8 @@ protected:
     qint8 flag_switch_mode_1 = true;
     qint8 flag_switch_mode_2 = false;
     QTime timeRegulator;
+
+    int ms;
 };
 
 #endif // CS_ROV_H
