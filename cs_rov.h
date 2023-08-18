@@ -76,7 +76,7 @@ protected:
     QTimer timer_power;
     QThread vmaThread;
 //  bool vmaPowerOffFlag = true;
-    quint8s modellingFlag = 1;
+    quint8 modellingFlag = 1;
     quint8 flag_of_mode = 100;
     quint8 contour_closure_yaw = 0;
     quint8 contour_closure_pitch = 0;
