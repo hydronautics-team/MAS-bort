@@ -44,6 +44,8 @@ void CS_ROV::tick()
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
     writeDataToPult();
+//    qDebug() << sizeof (auvProtocol->rec_data);
+//    qDebug() << "qDebug send data size: "<<sizeof (auvProtocol->send_data);
     ms++;
         if (ms>=100-7)
         {
@@ -55,7 +57,18 @@ void CS_ROV::tick()
 
 void CS_ROV::calibration() {
     if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку
-        char cmd_compas_1[5]; //задание формата посылки и частоты выдачи данных, 2.15 и 2.17
+
+        char cmd_rezhim_otveta[6]; //перейти в режим ответа
+        cmd_rezhim_otveta[0] = 0x77;
+        cmd_rezhim_otveta[1] = 0x05;
+        cmd_rezhim_otveta[2] = 0x00;
+        cmd_rezhim_otveta[3] = 0x0C;
+        cmd_rezhim_otveta[4] = 0x00;
+        cmd_rezhim_otveta[5] = 0x11;
+        AH127C->m_port.write(cmd_rezhim_otveta, 6);
+        AH127C->m_port.waitForBytesWritten();
+
+        char cmd_compas_1[5]; //начать калибровку
         cmd_compas_1[0] = 0x77;
         cmd_compas_1[1] = 0x04;
         cmd_compas_1[2] = 0x00;
@@ -67,14 +80,13 @@ void CS_ROV::calibration() {
         auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
 
     if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) {
-        char cmd_compas_2[6]; //задание формата посылки и частоты выдачи данных, 2.15 и 2.17
+        char cmd_compas_2[5]; //завершить калибровку
         cmd_compas_2[0] = 0x77;
         cmd_compas_2[1] = 0x04;
         cmd_compas_2[2] = 0x00;
         cmd_compas_2[3] = 0x12;
         cmd_compas_2[4] = 0x16;
-        cmd_compas_2[5] = 0x2C;
-        AH127C->m_port.write(cmd_compas_2, 6);
+        AH127C->m_port.write(cmd_compas_2, 5);
         AH127C->m_port.waitForBytesWritten();
     }
         auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
@@ -335,24 +347,24 @@ void CS_ROV::writeDataToPult()
 void CS_ROV:: timer_power_power()
   {
       if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
-            qDebug() << "1";
+            qDebug() << "power_Mode::MODE_2";
             digitalWrite (27, LOW) ;
             digitalWrite (28, LOW) ;
       }
       if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
           digitalWrite (27, LOW) ;
           digitalWrite (28, HIGH) ;
-          qDebug() << "2";
+          qDebug() << "power_Mode::MODE_3";
       }
       if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
           digitalWrite (27, HIGH) ;
           digitalWrite (28, LOW) ;
-          qDebug() << "3";
+          qDebug() << "power_Mode::MODE_4";
       }
       if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
           digitalWrite (27, HIGH) ;
           digitalWrite (28, HIGH) ;
-          qDebug() << "4";
+          qDebug() << "power_Mode::MODE_5";
       }
   }
 
