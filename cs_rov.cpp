@@ -58,6 +58,7 @@ void CS_ROV::tick()
 void CS_ROV::calibration() {
     if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку
 
+        AH127C->flag_start_cal = 1;
         char cmd_rezhim_otveta[6]; //перейти в режим ответа
         cmd_rezhim_otveta[0] = 0x77;
         cmd_rezhim_otveta[1] = 0x05;
@@ -80,6 +81,8 @@ void CS_ROV::calibration() {
         auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
 
     if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) {
+
+        AH127C->flag_finish_cal = 1;
         char cmd_compas_2[5]; //завершить калибровку
         cmd_compas_2[0] = 0x77;
         cmd_compas_2[1] = 0x04;
@@ -342,6 +345,13 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.dataAH127C.quat[1] = X[74][0];
     auvProtocol->send_data.dataAH127C.quat[2] = X[75][0];
     auvProtocol->send_data.dataAH127C.quat[3] = X[76][0];
+
+    auvProtocol->send_data.auvData.signalVMA_real.VMA1 = X[80][0];
+    auvProtocol->send_data.auvData.signalVMA_real.VMA2 = X[81][0];
+    auvProtocol->send_data.auvData.signalVMA_real.VMA3 = X[82][0];
+    auvProtocol->send_data.auvData.signalVMA_real.VMA4 = X[83][0];
+    auvProtocol->send_data.auvData.signalVMA_real.VMA5 = X[84][0];
+    auvProtocol->send_data.auvData.signalVMA_real.VMA6 = X[85][0];
 }
 
 void CS_ROV:: timer_power_power()
