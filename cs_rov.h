@@ -89,6 +89,7 @@ protected:
     QTime timeRegulator;
 
     int ms;
+    int count = 0;
 };
 
 #endif // CS_ROV_H

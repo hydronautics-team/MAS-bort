@@ -21,11 +21,11 @@ CS_ROV::CS_ROV(QObject *parent)
     auvProtocol->startExchange();
 
     //управление питанием
-    wiringPiSetup () ;
-    pinMode (27, OUTPUT) ;
-    pinMode (28, OUTPUT) ;
-    digitalWrite (27, LOW) ;
-    digitalWrite (28, LOW) ;
+//    wiringPiSetup () ;
+//    pinMode (27, OUTPUT) ;
+//    pinMode (28, OUTPUT) ;
+//    digitalWrite (27, LOW) ;
+//    digitalWrite (28, LOW) ;
 //    connect(&timer_power, &QTimer::timeout, this, &CS_ROV::tick_power);
 //    timer_power.start(1000);
 
@@ -56,7 +56,9 @@ void CS_ROV::tick()
 }
 
 void CS_ROV::calibration() {
-    if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку
+
+
+    if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку   auvProtocol->rec_data.flagAH127C_pult.initCalibration
 
         AH127C->flag_start_cal = 1;
         char cmd_rezhim_otveta[6]; //перейти в режим ответа
@@ -80,7 +82,7 @@ void CS_ROV::calibration() {
     }
         auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
 
-    if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) {
+    if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) { //auvProtocol->rec_data.flagAH127C_pult.saveCalibration
 
         AH127C->flag_finish_cal = 1;
         char cmd_compas_2[5]; //завершить калибровку
@@ -92,7 +94,7 @@ void CS_ROV::calibration() {
         AH127C->m_port.write(cmd_compas_2, 5);
         AH127C->m_port.waitForBytesWritten();
     }
-        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
+        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_end;
 }
 
 //void CS_ROV::processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt) {
