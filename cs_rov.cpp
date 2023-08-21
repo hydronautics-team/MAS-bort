@@ -21,13 +21,11 @@ CS_ROV::CS_ROV(QObject *parent)
     auvProtocol->startExchange();
 
     //управление питанием
-//    wiringPiSetup () ;
-//    pinMode (27, OUTPUT) ;
-//    pinMode (28, OUTPUT) ;
-//    digitalWrite (27, LOW) ;
-//    digitalWrite (28, LOW) ;
-//    connect(&timer_power, &QTimer::timeout, this, &CS_ROV::tick_power);
-//    timer_power.start(1000);
+    wiringPiSetup () ;
+    pinMode (27, OUTPUT) ;
+    pinMode (28, OUTPUT) ;
+    digitalWrite (27, LOW) ;
+    digitalWrite (28, LOW) ;
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
@@ -94,24 +92,8 @@ void CS_ROV::calibration() {
         AH127C->m_port.write(cmd_compas_2, 5);
         AH127C->m_port.waitForBytesWritten();
     }
-        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_end;
+        auvProtocol->send_data.flagAH127C_bort.endCalibration = AH127C->flag_calibration_end;
 }
-
-//void CS_ROV::processDesiredValuesAutomatizYaw(float inKurs, float newStartValue, bool flagReset, float dt) {
-//    X[2][0] = inKurs * K[2]; //заданная желаемая скорость по курсу
-//    X[5][0] = newStartValue;
-//    X[6][0] = flagReset;
-//    if (flagReset) { //если хотим сброить начальные условия
-//        X[3][0] = X[3][1] = newStartValue;
-//    }
-//    //интегрируем значения с рукоятки
-//    integrate(X[2][0], X[3][0], X[3][1], dt);
-//    if (K[4]!=0) { //если есть ограничения на интегрирование
-//    //может быть полезно для дифферента, крена или глубины, для курса
-//    // спорно)
-//        X[4][0] = saturation(X[3][0], K[3], K[5]);
-//    }
-//}
 
 void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
     output = prevOutput + dt*input;
@@ -245,7 +227,7 @@ void CS_ROV::regulators()
 
            X[104][0] = K[104]*X[54][0]; //Ux  - марш
 
-           //контур курса
+    //контур курса
            processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
            //X[111][0] = X[5][0] - X[91][0];
            X[111][0] = yawErrorCalculation(X[5][0],X[91][0]); //учет предела работы датчика, пересчет кратчайшего пути
@@ -331,6 +313,7 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.auvData.ControlDataReal.lag;
     auvProtocol->send_data.auvData.signalVMA_real;
 
+
     auvProtocol->send_data.dataAH127C.yaw = X[61][0];
     auvProtocol->send_data.dataAH127C.pitch = X[62][0];
     auvProtocol->send_data.dataAH127C.roll = X[63][0];
@@ -398,4 +381,3 @@ void CS_ROV::writeDataToVMA()
       vmaProtocol->setValues(X[211][0], X[221][0], X[231][0], X[241][0], X[251][0], X[261][0]);
     }
 }
-
