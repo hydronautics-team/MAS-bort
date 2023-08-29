@@ -3,7 +3,7 @@
 
 CS_ROV::CS_ROV(QObject *parent)
 {
-    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
+    AH127C = new AH127Cprotocol("COM10");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -21,11 +21,11 @@ CS_ROV::CS_ROV(QObject *parent)
     auvProtocol->startExchange();
 
     //управление питанием
-    wiringPiSetup () ;
-    pinMode (27, OUTPUT) ;
-    pinMode (28, OUTPUT) ;
-    digitalWrite (27, LOW) ;
-    digitalWrite (28, LOW) ;
+//    wiringPiSetup () ;
+//    pinMode (27, OUTPUT) ;
+//    pinMode (28, OUTPUT) ;
+//    digitalWrite (27, LOW) ;
+//    digitalWrite (28, LOW) ;
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
@@ -38,6 +38,7 @@ void CS_ROV::tick()
     readDataFromPult();
     readDataFromSensors();
     calibration();
+    alternative_yaw_calculation();
     regulators();
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
@@ -48,51 +49,9 @@ void CS_ROV::tick()
         if (ms>=100-7)
         {
             ms = 0;
-            timer_power_power();
+ //           timer_power_power();
         }
 
-}
-
-void CS_ROV::calibration() {
-
-
-    if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку   auvProtocol->rec_data.flagAH127C_pult.initCalibration
-
-        AH127C->flag_start_cal = 1;
-        char cmd_rezhim_otveta[6]; //перейти в режим ответа
-        cmd_rezhim_otveta[0] = 0x77;
-        cmd_rezhim_otveta[1] = 0x05;
-        cmd_rezhim_otveta[2] = 0x00;
-        cmd_rezhim_otveta[3] = 0x0C;
-        cmd_rezhim_otveta[4] = 0x00;
-        cmd_rezhim_otveta[5] = 0x11;
-        AH127C->m_port.write(cmd_rezhim_otveta, 6);
-        AH127C->m_port.waitForBytesWritten();
-
-        char cmd_compas_1[5]; //начать калибровку
-        cmd_compas_1[0] = 0x77;
-        cmd_compas_1[1] = 0x04;
-        cmd_compas_1[2] = 0x00;
-        cmd_compas_1[3] = 0x11;
-        cmd_compas_1[4] = 0x15;
-        AH127C->m_port.write(cmd_compas_1, 5);
-        AH127C->m_port.waitForBytesWritten();
-    }
-        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
-
-    if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) { //auvProtocol->rec_data.flagAH127C_pult.saveCalibration
-
-        AH127C->flag_finish_cal = 1;
-        char cmd_compas_2[5]; //завершить калибровку
-        cmd_compas_2[0] = 0x77;
-        cmd_compas_2[1] = 0x04;
-        cmd_compas_2[2] = 0x00;
-        cmd_compas_2[3] = 0x12;
-        cmd_compas_2[4] = 0x16;
-        AH127C->m_port.write(cmd_compas_2, 5);
-        AH127C->m_port.waitForBytesWritten();
-    }
-        auvProtocol->send_data.flagAH127C_bort.endCalibration = AH127C->flag_calibration_end;
 }
 
 void CS_ROV::integrate(double &input, double &output, double &prevOutput, double dt) {
@@ -185,6 +144,70 @@ void CS_ROV::readDataFromSensors()
      X[76][0] = AH127C->data.four_qvat;
 }
 
+void CS_ROV::calibration() {
+
+
+    if (auvProtocol->rec_data.flagAH127C_pult.initCalibration == true) { //начать калибровку   auvProtocol->rec_data.flagAH127C_pult.initCalibration
+
+        AH127C->flag_start_cal = 1;
+        char cmd_rezhim_otveta[6]; //перейти в режим ответа
+        cmd_rezhim_otveta[0] = 0x77;
+        cmd_rezhim_otveta[1] = 0x05;
+        cmd_rezhim_otveta[2] = 0x00;
+        cmd_rezhim_otveta[3] = 0x0C;
+        cmd_rezhim_otveta[4] = 0x00;
+        cmd_rezhim_otveta[5] = 0x11;
+        AH127C->m_port.write(cmd_rezhim_otveta, 6);
+        AH127C->m_port.waitForBytesWritten();
+
+        char cmd_compas_1[5]; //начать калибровку
+        cmd_compas_1[0] = 0x77;
+        cmd_compas_1[1] = 0x04;
+        cmd_compas_1[2] = 0x00;
+        cmd_compas_1[3] = 0x11;
+        cmd_compas_1[4] = 0x15;
+        AH127C->m_port.write(cmd_compas_1, 5);
+        AH127C->m_port.waitForBytesWritten();
+    }
+        auvProtocol->send_data.flagAH127C_bort.startCalibration = AH127C->flag_calibration_start;
+
+    if (auvProtocol->rec_data.flagAH127C_pult.saveCalibration == true) { //auvProtocol->rec_data.flagAH127C_pult.saveCalibration
+
+        AH127C->flag_finish_cal = 1;
+        char cmd_compas_2[5]; //завершить калибровку
+        cmd_compas_2[0] = 0x77;
+        cmd_compas_2[1] = 0x04;
+        cmd_compas_2[2] = 0x00;
+        cmd_compas_2[3] = 0x12;
+        cmd_compas_2[4] = 0x16;
+        AH127C->m_port.write(cmd_compas_2, 5);
+        AH127C->m_port.waitForBytesWritten();
+    }
+        auvProtocol->send_data.flagAH127C_bort.endCalibration = AH127C->flag_calibration_end;
+}
+
+void CS_ROV::alternative_yaw_calculation()
+{
+    X[170][0] = X[70][0] + K[70]; //Mx с учетом коррекции
+    X[171][0] = X[71][0] + K[71]; //My с учетом коррекции
+    //X[172][0]=X[72][0] + K[72];
+    X[172][0] = X[72][0] + sin(0.5*X[63][0]/57.3)*K[72]; //Mz с учетом коррекции
+
+    double teta = X[62][0]*M_PI/180; double gamma = X[63][0]*M_PI/180;
+    X[176][0] = teta;
+    X[177][0] = gamma;
+    A[0][0] = cos(teta); A[0][1] = sin(teta)*sin(gamma); A[0][2] = -sin(teta)*cos(gamma);
+    A[1][0] = 0; A[1][1] = cos(gamma); A[1][2] = sin(gamma);
+    A[2][0] = sin(teta); A[2][1] = -sin(gamma)*cos(teta); A[2][2] = cos(teta)*cos(gamma);
+
+    X[300][0] = I[0] = A[0][0]*X[170][0] + A[0][1]*X[171][0] + A[0][2]*X[172][0];
+    X[400][0] = I[1] = A[1][0]*X[170][0] + A[1][1]*X[171][0] + A[1][2]*X[172][0];
+    X[500][0] = I[2] = A[2][0]*X[170][0] + A[2][1]*X[171][0] + A[2][2]*X[172][0];
+
+    X[174][0] = I[0];
+    X[175][0] = I[1];
+    X[75][0] = atan2(-I[1],-I[0])*57.3;
+}
 
 void CS_ROV::regulators()
 {
@@ -339,29 +362,29 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.auvData.signalVMA_real.VMA6 = X[85][0];
 }
 
-void CS_ROV:: timer_power_power()
-  {
-      if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
-            qDebug() << "power_Mode::MODE_2";
-            digitalWrite (27, LOW) ;
-            digitalWrite (28, LOW) ;
-      }
-      if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
-          digitalWrite (27, LOW) ;
-          digitalWrite (28, HIGH) ;
-          qDebug() << "power_Mode::MODE_3";
-      }
-      if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
-          digitalWrite (27, HIGH) ;
-          digitalWrite (28, LOW) ;
-          qDebug() << "power_Mode::MODE_4";
-      }
-      if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
-          digitalWrite (27, HIGH) ;
-          digitalWrite (28, HIGH) ;
-          qDebug() << "power_Mode::MODE_5";
-      }
-  }
+//void CS_ROV:: timer_power_power()
+//  {
+//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
+//            qDebug() << "power_Mode::MODE_2";
+//            digitalWrite (27, LOW) ;
+//            digitalWrite (28, LOW) ;
+//      }
+//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
+//          digitalWrite (27, LOW) ;
+//          digitalWrite (28, HIGH) ;
+//          qDebug() << "power_Mode::MODE_3";
+//      }
+//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
+//          digitalWrite (27, HIGH) ;
+//          digitalWrite (28, LOW) ;
+//          qDebug() << "power_Mode::MODE_4";
+//      }
+//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
+//          digitalWrite (27, HIGH) ;
+//          digitalWrite (28, HIGH) ;
+//          qDebug() << "power_Mode::MODE_5";
+//      }
+//  }
 
 
 void CS_ROV::setModellingFlag(bool flag)

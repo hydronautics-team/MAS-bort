@@ -12,7 +12,7 @@
 #include <QTime>
 #include <QDebug>
 #include "protocol_bort_AUV/pc_protocol.h"
-#include "wiringPi.h"
+//#include "wiringPi.h"
 
 const QString ConfigFile = "protocols.conf";
 const QString agent = "agent";
@@ -54,6 +54,7 @@ protected:
 
     void readDataFromPult();
     void calibration();
+    void alternative_yaw_calculation();
     void readDataFromSensors();
     void regulators();
     void timer_power_power();
@@ -90,6 +91,9 @@ protected:
 
     int ms;
     int count = 0;
+    //для альтернативного метода расчета угла курса
+    double A[3][3];  //матрица перехода
+    double I[3];   //Ix, Iy, Iz
 };
 
 #endif // CS_ROV_H
