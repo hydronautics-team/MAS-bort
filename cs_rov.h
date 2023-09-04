@@ -12,7 +12,7 @@
 #include <QTime>
 #include <QDebug>
 #include "protocol_bort_AUV/pc_protocol.h"
-//#include "wiringPi.h"
+#include "wiringPi.h"
 
 const QString ConfigFile = "protocols.conf";
 const QString agent = "agent";

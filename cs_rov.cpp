@@ -3,7 +3,7 @@
 
 CS_ROV::CS_ROV(QObject *parent)
 {
-    AH127C = new AH127Cprotocol("COM10");  //ttyUSB0
+    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -21,16 +21,17 @@ CS_ROV::CS_ROV(QObject *parent)
     auvProtocol->startExchange();
 
     //управление питанием
-//    wiringPiSetup () ;
-//    pinMode (27, OUTPUT) ;
-//    pinMode (28, OUTPUT) ;
-//    digitalWrite (27, LOW) ;
-//    digitalWrite (28, LOW) ;
+    wiringPiSetup () ;
+    pinMode (27, OUTPUT) ;
+    pinMode (28, OUTPUT) ;
+    digitalWrite (27, LOW) ;
+    digitalWrite (28, LOW) ;
 
     connect(&timer, &QTimer::timeout, this, &CS_ROV::tick);
     timer.start(10);
     timeRegulator.start();
     X[91][0]=X[91][1]=0; //нулевые НУ для интегрирования угловой скорости и нахождения угла курса
+    X[92][0]=X[92][1]=0; //нулевые НУ для интегрирования угловой скорости и нахождения угла дифферента
 }
 
 void CS_ROV::tick()
@@ -49,7 +50,7 @@ void CS_ROV::tick()
         if (ms>=100-7)
         {
             ms = 0;
- //           timer_power_power();
+            timer_power_power();
         }
 
 }
@@ -248,7 +249,7 @@ void CS_ROV::regulators()
            }
            contour_closure_yaw = 1;
 
-           X[104][0] = K[104]*X[54][0]; //Ux  - марш
+           //X[104][0] = K[104]*X[54][0]; //Ux  - марш
 
     //контур курса
            processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
@@ -279,7 +280,47 @@ void CS_ROV::regulators()
             resetRollChannel();
 
         }
-    }
+        if (auvProtocol->rec_data.controlContoursFlags.pitch>0) { //замкнут дифферент
+           if (flag_switch_mode_2 == false) {
+                X[6][1]=X[91][0];
+                X[6][0] = 0;
+                flag_switch_mode_2 = true;
+                flag_switch_mode_1 = false;
+                qDebug() << contour_closure_yaw <<"автоматизированный режим";
+           }
+           contour_closure_yaw = 1;
+
+           //X[104][0] = K[104]*X[54][0]; //Ux  - марш
+
+    //контур дифферента
+           processDesiredValuesAutomatiz(X[52][0],X[6][0],X[6][1],K[2]); //пересчет рукоятки в автоматизированном режиме
+           X[311][0] = X[6][0] - X[62][0];
+           X[312][0] = X[311][0]*K[311];
+           X[313][0] = X[312][0]*K[312];
+           X[314][0] = X[314][1] + 0.5*(X[313][0] + X[313][1])*dt; //выходное значение интегратора без полок
+
+           if (K[313] != 0){//значит заданы полки
+               X[314][0] = saturation(X[314][0],K[313],K[314]); //выходное значение интегратора с полками
+           }
+           X[314][1] = X[314][0];
+           X[313][1] = X[313][0];
+
+           X[316][0] = X[314][0] + X[312][0];
+
+           X[321][0] = X[68][0]*K[318];
+           X[319][0] = X[52][0]*K[319];
+           X[317][0] = X[116][0] - X[121][0] + X[119][0];
+           X[318][0] = saturation(X[317][0],K[316],-K[316]);
+           X[301][0] = X[318][0]*K[300];
+        }
+        else {
+            X[301][0] = K[301]*X[52][0]; //Upsi
+            X[301][0] = saturation(X[317][0],K[316],-K[316]);
+            resetYawChannel();
+            resetRollChannel();
+
+        }
+    } 
 }
 
 void CS_ROV::resetYawChannel()
@@ -310,7 +351,6 @@ void CS_ROV::BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux, double
     X[241][0] = limit(X[140][0],K[200]);
     X[251][0] = limit(X[150][0],K[200]);
     X[261][0] = limit(X[160][0],K[200]);
-
 
 }
 
@@ -362,29 +402,29 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.auvData.signalVMA_real.VMA6 = X[85][0];
 }
 
-//void CS_ROV:: timer_power_power()
-//  {
-//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
-//            qDebug() << "power_Mode::MODE_2";
-//            digitalWrite (27, LOW) ;
-//            digitalWrite (28, LOW) ;
-//      }
-//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
-//          digitalWrite (27, LOW) ;
-//          digitalWrite (28, HIGH) ;
-//          qDebug() << "power_Mode::MODE_3";
-//      }
-//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
-//          digitalWrite (27, HIGH) ;
-//          digitalWrite (28, LOW) ;
-//          qDebug() << "power_Mode::MODE_4";
-//      }
-//      if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
-//          digitalWrite (27, HIGH) ;
-//          digitalWrite (28, HIGH) ;
-//          qDebug() << "power_Mode::MODE_5";
-//      }
-//  }
+void CS_ROV:: timer_power_power()
+  {
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_2){
+            qDebug() << "power_Mode::MODE_2";
+            digitalWrite (27, LOW) ;
+            digitalWrite (28, LOW) ;
+      }
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_3){
+          digitalWrite (27, LOW) ;
+          digitalWrite (28, HIGH) ;
+          qDebug() << "power_Mode::MODE_3";
+      }
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_4){
+          digitalWrite (27, HIGH) ;
+          digitalWrite (28, LOW) ;
+          qDebug() << "power_Mode::MODE_4";
+      }
+      if (auvProtocol->rec_data.pMode == power_Mode::MODE_5){
+          digitalWrite (27, HIGH) ;
+          digitalWrite (28, HIGH) ;
+          qDebug() << "power_Mode::MODE_5";
+      }
+  }
 
 
 void CS_ROV::setModellingFlag(bool flag)
