@@ -3,10 +3,6 @@ version: '3'
 services:
   mas_bort:
     image: mas_bort:latest
+    container_name: mas_bort
+    privileged: true
     network_mode: "host"
-    # All devices required
-    # devices:
-      # - "/dev/<>:/dev/<>"
-      # - ...
-    volumes:
-      - ./:/workspace
