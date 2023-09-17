@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  mas_bort:
+    image: test_arm
+    container_name: cross
+    privileged: true
+    network_mode: "host"
+    volumes:
+      - ./:/workspace
+    command: ["tail", "-f", "/dev/null"]
