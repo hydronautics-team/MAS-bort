@@ -15,7 +15,7 @@
 #include <QBasicTimer>
 #include <QtCore>
 
-#include "kx_pult/qpiconfig.h"
+#include "qpiconfig.h"
 
 #define X_NUM 20
 

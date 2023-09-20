@@ -5,7 +5,7 @@
 #include <QUdpSocket>
 #include <QTime>
 #include <QTimer>
-#include "kx_pult/qpiconfig.h"
+#include "qpiconfig.h"
 
 
 
