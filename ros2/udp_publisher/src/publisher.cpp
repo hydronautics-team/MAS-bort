@@ -9,7 +9,27 @@
 #include "udp_client.h"
 
 
-using namespace std::chrono_literals;
+class Control : public rclcpp::Node {
+public:
+    static constexpr int TIMER_RATE_MSEC = 100;
+
+    Control() : Node("control")
+    , publisher_(this->create_publisher<std_msgs::msg::String>("planner_message", 1))
+    {
+        send_timer_ = this->create_wall_timer(std::chrono::milliseconds(TIMER_RATE_MSEC),
+            std::bind(&Control::timer_callback, this));
+    }
+
+    void timer_callback() {
+        auto message = std_msgs::msg::String();
+        message.data = "control_data";
+        publisher_->publish(message);
+    }
+
+private:
+    rclcpp::TimerBase::SharedPtr send_timer_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+};
 
 class MinimalPublisher : public rclcpp::Node {
 public:

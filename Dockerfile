@@ -15,7 +15,7 @@ COPY --from=base /usr/lib/ /sysroot/usr/lib/
 COPY --from=base /usr/bin/ /sysroot/usr/bin
 COPY --from=base /opt/ros/ /sysroot/opt/ros
 
-RUN apt update && apt install -y vim git tree curl cmake make openssh-client rsync \
+RUN apt update && apt install -y vim git tree curl cmake make openssh-client sshpass rsync \
     libboost-system-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
     qtbase5-dev libqt5serialport5-dev libwiringpi-dev
 

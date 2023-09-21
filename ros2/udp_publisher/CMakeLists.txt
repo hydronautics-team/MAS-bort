@@ -21,8 +21,14 @@ add_executable(publisher
 )
 ament_target_dependencies(publisher rclcpp std_msgs Boost)
 
+add_executable(control
+  src/control.cpp
+)
+ament_target_dependencies(control rclcpp std_msgs)
+
 install(TARGETS
   publisher
+  control
   DESTINATION lib/${PROJECT_NAME}
 )
 
