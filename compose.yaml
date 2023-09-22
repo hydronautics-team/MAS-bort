@@ -2,8 +2,8 @@ version: '3'
 
 services:
   mas_bort:
-    image: test_arm
-    container_name: cross
+    image: annaspitsina/mas_bort:dev
+    container_name: mas_bort
     privileged: true
     network_mode: "host"
     volumes:

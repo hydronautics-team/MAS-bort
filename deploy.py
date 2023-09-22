@@ -4,7 +4,7 @@ import argparse
 import subprocess as sp
 from pathlib import Path
 
-RPI_DEPLOY_PATH = "/home/pi"
+RPI_DEPLOY_PATH = "/home/agent2"
 
 
 def get_source_dir() -> Path:

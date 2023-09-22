@@ -89,7 +89,7 @@ protected:
     qint8 flag_switch_mode_2 = false;
     QTime timeRegulator;
 
-    int ms;
+    int ms = 0;
     int count = 0;
     //для альтернативного метода расчета угла курса
     double A[3][3];  //матрица перехода
