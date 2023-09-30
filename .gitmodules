@@ -7,3 +7,6 @@
 [submodule "protocol_bort_AUV"]
 	path = protocol_bort_AUV
 	url = https://github.com/lch1204/protocol_bort_AUV
+[submodule "parserUWB"]
+	path = parserUWB
+	url = https://github.com/lch1204/parserUWB
