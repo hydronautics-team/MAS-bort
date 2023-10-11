@@ -1,9 +1,10 @@
 #include "cs_rov.h"
 #include <QDebug>
 
+
 CS_ROV::CS_ROV(QObject *parent)
 {
-    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
+    AH127C = new AH127Cprotocol("ttyUSB1");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -20,6 +21,18 @@ CS_ROV::CS_ROV(QObject *parent)
     qDebug() << "-----start exchange";
     auvProtocol->startExchange();
 
+    trUWB = new UWB::TrilatUWB(this, auvProtocol);
+    QString port2 ="ttyUSB0";
+    qint32 baudrate2 = 115200;
+    prUWB = new UWB::ProtocolUWB (port2, baudrate2);
+    prUWB->moveToThread(&uwbThread);
+    QObject::connect(&uwbThread, &QThread::started, prUWB, &UWB::ProtocolUWB::start);
+    uwbThread.start();
+
+Calibration *calib = new Calibration(prUWB);
+
+    QObject::connect(prUWB, &UWB::ProtocolUWB::renewMSG, trUWB, &UWB::TrilatUWB::distanceCalc, Qt::BlockingQueuedConnection);
+ //   QObject::connect(prUWB, &UWB::ProtocolUWB::renew, calib, &Calibration::newCalibration, Qt::BlockingQueuedConnection);
     //управление питанием
     wiringPiSetup () ;
     pinMode (27, OUTPUT) ;
@@ -44,6 +57,7 @@ void CS_ROV::tick()
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
     writeDataToPult();
+
 //    qDebug() << sizeof (auvProtocol->rec_data);
 //    qDebug() << "qDebug send data size: "<<sizeof (auvProtocol->send_data);
     ms++;
@@ -115,6 +129,8 @@ void CS_ROV::readDataFromPult()
     X[54][0] = auvProtocol->rec_data.controlData.march;
     X[55][0] = auvProtocol->rec_data.controlData.lag;
     X[56][0] = auvProtocol->rec_data.controlData.depth;
+
+
 
     if (auvProtocol->rec_data.modeAUV_selection == 1) setModellingFlag(true);
     else setModellingFlag(false);
@@ -393,6 +409,14 @@ void CS_ROV::writeDataToPult()
     auvProtocol->send_data.dataAH127C.quat[1] = X[74][0];
     auvProtocol->send_data.dataAH127C.quat[2] = X[75][0];
     auvProtocol->send_data.dataAH127C.quat[3] = X[76][0];
+
+    auvProtocol->send_data.dataUWB.connection_field = prUWB->msg.connection_field;
+    auvProtocol->send_data.dataUWB.error_code = prUWB->msg.error_code;
+    auvProtocol->send_data.dataUWB.distanceToBeacon[0] = X[541][0];
+    auvProtocol->send_data.dataUWB.distanceToBeacon[1] = X[542][0];
+    auvProtocol->send_data.dataUWB.distanceToBeacon[2] = X[543][0];
+    auvProtocol->send_data.dataUWB.locationX = X[551][0];
+    auvProtocol->send_data.dataUWB.locationY = X[552][0];
 
     auvProtocol->send_data.auvData.signalVMA_real.VMA1 = X[80][0];
     auvProtocol->send_data.auvData.signalVMA_real.VMA2 = X[81][0];
