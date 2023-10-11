@@ -13,6 +13,9 @@
 #include <QDebug>
 #include "protocol_bort_AUV/pc_protocol.h"
 #include "wiringPi.h"
+#include "parserUWB/protocoluwb.h"
+#include "parserUWB/trilatUWB.h"
+#include "parserUWB/calibration.h"
 
 const QString ConfigFile = "protocols.conf";
 const QString agent = "agent";
@@ -68,6 +71,8 @@ protected:
     void changeSinSignalFlag(qint8 sinflag);
     void setModellingFlag(bool);
     AH127Cprotocol *AH127C = nullptr;
+    UWB::ProtocolUWB *prUWB = nullptr;
+    UWB::TrilatUWB *trUWB = nullptr;
     VMA_controller* vmaProtocol = nullptr;
     power_Mode pMode;
     //обмен с пультом
@@ -76,6 +81,8 @@ protected:
     QTimer timer;
     QTimer timer_power;
     QThread vmaThread;
+    QThread uwbThread;
+
 //  bool vmaPowerOffFlag = true;
     quint8 modellingFlag = 1;
     quint8 flag_of_mode = 100;

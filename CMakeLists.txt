@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}
     main.cpp
     NIR/VMA_controller/vma_controller.cpp NIR/VMA_controller/vma_controller.h
     Parser-BW-AH127C/AH127Cprotocol.cpp Parser-BW-AH127C/AH127Cprotocol.h
+    parserUWB/calibration.cpp parserUWB/protocoluwb.cpp parserUWB/trilatUWB.cpp
     cs_rov.cpp cs_rov.h
     kx_pult/configdata.cpp kx_pult/configdata.h
     kx_pult/kx_protocol.cpp kx_pult/kx_protocol.h
