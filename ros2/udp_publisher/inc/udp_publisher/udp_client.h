@@ -68,7 +68,7 @@ private:
             RCLCPP_ERROR_STREAM(logger_, "Send failed: " << error.message());
             return;
         }
-         RCLCPP_INFO_STREAM(logger_, "Send `" << bytes_transferred  << " bytes!");
+        RCLCPP_INFO_STREAM(logger_, "Send `" << bytes_transferred  << " bytes!");
     }
 
 private:

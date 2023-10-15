@@ -28,6 +28,7 @@ add_executable(control
 
 set(msg_files
   "msg/FromBort.msg"
+  "msg/ToBort.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -46,7 +47,6 @@ target_include_directories(publisher
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
     $<INSTALL_INTERFACE:include>
 )
-
 ament_target_dependencies(control rclcpp std_msgs)
 
 install(TARGETS

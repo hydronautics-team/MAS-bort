@@ -9,7 +9,6 @@
 #include "udp_publisher/udp_client.h"
 #include "udp_publisher/protocols.h"
 
-//#include <udp_publisher/msg/from_bort.hpp>
 #include "udp_publisher/msg/from_bort.hpp"
  
 
@@ -101,8 +100,12 @@ private:
     }
 
     void timer_callback() {
+        //здесь я так понимаю нужно также заполнить посылку на борт
+        // В QT было: sendSocket->writeDatagram((char *)&send_data, sizeof(send_data),m_ip_sender, m_port_sender);
+
         // assert(!last_planner_message_.empty());
         udp_client_.send(last_planner_message_);
+        
     }
 
 private:
