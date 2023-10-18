@@ -60,6 +60,7 @@ protected:
     void alternative_yaw_calculation();
     void readDataFromSensors();
     void regulators();
+    void regulators_for_model();
     void timer_power_power();
     void resetYawChannel();
     void resetRollChannel();
