@@ -1,10 +1,9 @@
 #include "cs_rov.h"
 #include <QDebug>
-//sss
 
 CS_ROV::CS_ROV(QObject *parent)
 {
-    AH127C = new AH127Cprotocol("ttyUSB1");  //ttyUSB0
+    AH127C = new AH127Cprotocol("ttyUSB0");  //ttyUSB0
 
     QSettings settings("settings/settings.ini", QSettings::IniFormat);
     settings.beginGroup("Port");
@@ -54,6 +53,7 @@ void CS_ROV::tick()
     calibration();
     alternative_yaw_calculation();
     regulators();
+    regulators_for_model();
     BFS_DRK(X[101][0], X[102][0], X[103][0] , X[104][0], X[105][0], X[106][0]);
     writeDataToVMA();
     writeDataToPult();
@@ -129,7 +129,7 @@ void CS_ROV::readDataFromPult()
     X[54][0] = auvProtocol->rec_data.controlData.march;
     X[55][0] = auvProtocol->rec_data.controlData.lag;
     X[56][0] = auvProtocol->rec_data.controlData.depth;
-
+    //X[51][0] = 20;
 
 
     if (auvProtocol->rec_data.modeAUV_selection == 1) setModellingFlag(true);
@@ -228,115 +228,189 @@ void CS_ROV::alternative_yaw_calculation()
 
 void CS_ROV::regulators()
 {
-    float dt = timeRegulator.elapsed()*0.001;//реальный временной шаг цикла
-    timeRegulator.start();
-    integrate(X[69][0],X[91][0],X[91][1],dt); //интегрируем показание Z_rate для нахождения текущего угла курса
+    if (modellingFlag == false) {
+        float dt = timeRegulator.elapsed()*0.001;//реальный временной шаг цикла
+        timeRegulator.start();
+        integrate(X[69][0],X[91][0],X[91][1],dt); //интегрируем показание Z_rate для нахождения текущего угла курса
 
-    if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_MANUAL) { //САУ тогда разомкнута
-            if (flag_switch_mode_1 == false) {
-                X[5][0] = X[5][1] = 0;
-                flag_switch_mode_1 = true;
-                flag_switch_mode_2 = false;
-                qDebug() << contour_closure_yaw <<"ручной режим";
+        if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_MANUAL) { //САУ тогда разомкнута
+                if (flag_switch_mode_1 == false) {
+                    X[5][0] = X[5][1] = 0;
+                    flag_switch_mode_1 = true;
+                    flag_switch_mode_2 = false;
+                    qDebug() << contour_closure_yaw <<"ручной режим";
+                }
+
+                flag_of_mode = 0;
+
+                X[101][0] = K[101]*X[51][0]; //управление по курсу, домножается на коэффициент и передается на ВМА
+                X[102][0] = K[102]*X[52][0]; //Uteta
+                X[103][0] = K[103]*X[53][0]; //Ugamma
+                X[104][0] = K[104]*X[54][0]; //Ux
+                X[105][0] = K[105]*X[55][0]; //Uy
+                X[106][0] = K[106]*X[56][0]; //Uz
+
+                resetYawChannel();
+                resetRollChannel();
+                resetPitchChannel();
+
+        } else if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_AUTOMATED) { //САУ в автоматизированном режиме
+            flag_of_mode = 1;
+            if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
+               if (flag_switch_mode_2 == false) {
+                    X[5][1]=X[91][0];
+                    X[5][0] = 0;
+                    flag_switch_mode_2 = true;
+                    flag_switch_mode_1 = false;
+                    qDebug() << contour_closure_yaw <<"автоматизированный режим";
+               }
+               contour_closure_yaw = 1;
+
+               //X[104][0] = K[104]*X[54][0]; //Ux  - марш
+
+        //контур курса
+               processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
+               //X[111][0] = X[5][0] - X[91][0];
+               X[111][0] = yawErrorCalculation(X[5][0],X[91][0]); //учет предела работы датчика, пересчет кратчайшего пути
+               X[112][0] = X[111][0]*K[111];
+               X[113][0] = X[112][0]*K[112];
+               X[114][0] = X[114][1] + 0.5*(X[113][0] + X[113][1])*dt; //выходное значение интегратора без полок
+
+               if (K[113] != 0){//значит заданы полки
+                   X[114][0] = saturation(X[114][0],K[113],K[114]); //выходное значение интегратора с полками
+               }
+               X[114][1] = X[114][0];
+               X[113][1] = X[113][0];
+
+               X[116][0] = X[114][0] + X[112][0];
+
+               X[121][0] = X[69][0]*K[118];
+               X[119][0] = X[51][0]*K[119];
+               X[117][0] = X[116][0] - X[121][0] + X[119][0];
+               X[118][0] = saturation(X[117][0],K[116],-K[116]);
+               X[101][0] = X[118][0]*K[100];
             }
+            else {
+                X[101][0] = K[101]*X[51][0]; //Upsi
+                X[101][0] = saturation(X[117][0],K[116],-K[116]);
+                resetYawChannel();
+                resetRollChannel();
 
-            flag_of_mode = 0;
+            }
+            if (auvProtocol->rec_data.controlContoursFlags.pitch>0) { //замкнут дифферент
+               if (flag_switch_mode_2 == false) {
+                    X[6][1]=X[91][0];
+                    X[6][0] = 0;
+                    flag_switch_mode_2 = true;
+                    flag_switch_mode_1 = false;
+                    qDebug() << contour_closure_yaw <<"автоматизированный режим";
+               }
+               contour_closure_yaw = 1;
 
-            X[101][0] = K[101]*X[51][0]; //управление по курсу, домножается на коэффициент и передается на ВМА
-            X[102][0] = K[102]*X[52][0]; //Uteta
-            X[103][0] = K[103]*X[53][0]; //Ugamma
-            X[104][0] = K[104]*X[54][0]; //Ux
-            X[105][0] = K[105]*X[55][0]; //Uy
-            X[106][0] = K[106]*X[56][0]; //Uz
+               //X[104][0] = K[104]*X[54][0]; //Ux  - марш
 
-            resetYawChannel();
-            resetRollChannel();
-            resetPitchChannel();
+        //контур дифферента
+               processDesiredValuesAutomatiz(X[52][0],X[6][0],X[6][1],K[2]); //пересчет рукоятки в автоматизированном режиме
+               X[311][0] = X[6][0] - X[62][0];
+               X[312][0] = X[311][0]*K[311];
+               X[313][0] = X[312][0]*K[312];
+               X[314][0] = X[314][1] + 0.5*(X[313][0] + X[313][1])*dt; //выходное значение интегратора без полок
 
-    } else if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_AUTOMATED) { //САУ в автоматизированном режиме
-        flag_of_mode = 1;
-        if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
-           if (flag_switch_mode_2 == false) {
-                X[5][1]=X[91][0];
-                X[5][0] = 0;
-                flag_switch_mode_2 = true;
-                flag_switch_mode_1 = false;
-                qDebug() << contour_closure_yaw <<"автоматизированный режим";
-           }
-           contour_closure_yaw = 1;
+               if (K[313] != 0){//значит заданы полки
+                   X[314][0] = saturation(X[314][0],K[313],K[314]); //выходное значение интегратора с полками
+               }
+               X[314][1] = X[314][0];
+               X[313][1] = X[313][0];
 
-           //X[104][0] = K[104]*X[54][0]; //Ux  - марш
+               X[316][0] = X[314][0] + X[312][0];
 
-    //контур курса
-           processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
-           //X[111][0] = X[5][0] - X[91][0];
-           X[111][0] = yawErrorCalculation(X[5][0],X[91][0]); //учет предела работы датчика, пересчет кратчайшего пути
-           X[112][0] = X[111][0]*K[111];
-           X[113][0] = X[112][0]*K[112];
-           X[114][0] = X[114][1] + 0.5*(X[113][0] + X[113][1])*dt; //выходное значение интегратора без полок
+               X[321][0] = X[68][0]*K[318];
+               X[319][0] = X[52][0]*K[319];
+               X[317][0] = X[116][0] - X[121][0] + X[119][0];
+               X[318][0] = saturation(X[317][0],K[316],-K[316]);
+               X[301][0] = X[318][0]*K[300];
+            }
+            else {
+                X[301][0] = K[301]*X[52][0]; //Upsi
+                X[301][0] = saturation(X[317][0],K[316],-K[316]);
+                resetYawChannel();
+                resetRollChannel();
 
-           if (K[113] != 0){//значит заданы полки
-               X[114][0] = saturation(X[114][0],K[113],K[114]); //выходное значение интегратора с полками
-           }
-           X[114][1] = X[114][0];
-           X[113][1] = X[113][0];
-
-           X[116][0] = X[114][0] + X[112][0];
-
-           X[121][0] = X[69][0]*K[118];
-           X[119][0] = X[51][0]*K[119];
-           X[117][0] = X[116][0] - X[121][0] + X[119][0];
-           X[118][0] = saturation(X[117][0],K[116],-K[116]);
-           X[101][0] = X[118][0]*K[100];
-        }
-        else {
-            X[101][0] = K[101]*X[51][0]; //Upsi
-            X[101][0] = saturation(X[117][0],K[116],-K[116]);
-            resetYawChannel();
-            resetRollChannel();
-
-        }
-        if (auvProtocol->rec_data.controlContoursFlags.pitch>0) { //замкнут дифферент
-           if (flag_switch_mode_2 == false) {
-                X[6][1]=X[91][0];
-                X[6][0] = 0;
-                flag_switch_mode_2 = true;
-                flag_switch_mode_1 = false;
-                qDebug() << contour_closure_yaw <<"автоматизированный режим";
-           }
-           contour_closure_yaw = 1;
-
-           //X[104][0] = K[104]*X[54][0]; //Ux  - марш
-
-    //контур дифферента
-           processDesiredValuesAutomatiz(X[52][0],X[6][0],X[6][1],K[2]); //пересчет рукоятки в автоматизированном режиме
-           X[311][0] = X[6][0] - X[62][0];
-           X[312][0] = X[311][0]*K[311];
-           X[313][0] = X[312][0]*K[312];
-           X[314][0] = X[314][1] + 0.5*(X[313][0] + X[313][1])*dt; //выходное значение интегратора без полок
-
-           if (K[313] != 0){//значит заданы полки
-               X[314][0] = saturation(X[314][0],K[313],K[314]); //выходное значение интегратора с полками
-           }
-           X[314][1] = X[314][0];
-           X[313][1] = X[313][0];
-
-           X[316][0] = X[314][0] + X[312][0];
-
-           X[321][0] = X[68][0]*K[318];
-           X[319][0] = X[52][0]*K[319];
-           X[317][0] = X[116][0] - X[121][0] + X[119][0];
-           X[318][0] = saturation(X[317][0],K[316],-K[316]);
-           X[301][0] = X[318][0]*K[300];
-        }
-        else {
-            X[301][0] = K[301]*X[52][0]; //Upsi
-            X[301][0] = saturation(X[317][0],K[316],-K[316]);
-            resetYawChannel();
-            resetRollChannel();
-
+            }
         }
     } 
+}
+
+
+void CS_ROV::regulators_for_model()
+{
+    if (modellingFlag == true) {
+        float dt = timeRegulator.elapsed()*0.001;//реальный временной шаг цикла
+        timeRegulator.start();
+
+        if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_MANUAL) { //САУ тогда разомкнута
+                if (flag_switch_mode_1 == false) {
+                    X[5][0] = X[5][1] = 0;
+                    flag_switch_mode_1 = true;
+                    flag_switch_mode_2 = false;
+                    qDebug() << contour_closure_yaw <<"ручной режим";
+                }
+
+                flag_of_mode = 0;
+
+                X[101][0] = K[101]*X[51][0]; //управление по курсу, домножается на коэффициент и передается на ВМА
+                X[102][0] = K[102]*X[52][0]; //Uteta
+                X[103][0] = K[103]*X[53][0]; //Ugamma
+                X[104][0] = K[104]*X[54][0]; //Ux
+                X[105][0] = K[105]*X[55][0]; //Uy
+                X[106][0] = K[106]*X[56][0]; //Uz
+
+                resetYawChannel();
+                resetRollChannel();
+                resetPitchChannel();
+
+    } else if (auvProtocol->rec_data.cSMode == e_CSMode::MODE_AUTOMATED) { //САУ в автоматизированном режиме
+            flag_of_mode = 1;
+            if (auvProtocol->rec_data.controlContoursFlags.yaw>0) { //замкнут курс
+               if (flag_switch_mode_2 == false) {
+                    X[5][1]=X[91][0];
+                    X[5][0] = 0;
+                    flag_switch_mode_2 = true;
+                    flag_switch_mode_1 = false;
+                    qDebug() << contour_closure_yaw <<"автоматизированный режим";
+               }
+               contour_closure_yaw = 1;
+
+        //контур курса
+               processDesiredValuesAutomatiz(X[51][0],X[5][0],X[5][1],K[2]); //пересчет рукоятки в автоматизированном режиме
+               X[111][0] = X[5][0] - X[18][0];
+               X[112][0] = X[111][0]*K[121];
+               X[113][0] = X[112][0]*K[122];
+               X[114][0] = X[114][1] + 0.5*(X[113][0] + X[113][1])*dt; //выходное значение интегратора без полок
+
+               if (K[113] != 0){//значит заданы полки
+                   X[114][0] = saturation(X[114][0],K[123],K[124]); //выходное значение интегратора с полками
+               }
+               X[114][1] = X[114][0];
+               X[113][1] = X[113][0];
+
+               X[116][0] = X[114][0] + X[112][0];
+
+               X[121][0] = X[12][0]*K[128];
+               X[119][0] = X[51][0]*K[129];
+               X[117][0] = X[116][0] - X[121][0] + X[119][0];
+               X[118][0] = saturation(X[117][0],K[126],-K[126]);
+               X[101][0] = X[118][0]*K[120];
+            }
+            else {
+                X[101][0] = K[101]*X[51][0]; //Upsi
+                X[101][0] = saturation(X[117][0],K[116],-K[116]);
+                resetYawChannel();
+                resetRollChannel();
+
+            }
+    }
+}
 }
 
 void CS_ROV::resetYawChannel()

@@ -10,6 +10,7 @@
 #include "udp_publisher/protocols.h"
 
 #include "udp_publisher/msg/from_bort.hpp"
+
  
 
 class MinimalPublisher : public rclcpp::Node {
@@ -26,16 +27,19 @@ public:
         std::thread([&](){ udp_client_.run(); }).detach();
         send_timer_ = this->create_wall_timer(std::chrono::milliseconds(TIMER_RATE_MSEC),
             std::bind(&MinimalPublisher::timer_callback, this));
+    RCLCPP_INFO_STREAM(this->get_logger(), "OK ");
     }
 
 private:
     void planner_msg_callback(const std_msgs::msg::String &message) {
         RCLCPP_INFO_STREAM(this->get_logger(), "Received from planner: " << message.data);
         last_planner_message_ = message.data;
+        RCLCPP_INFO_STREAM(this->get_logger(), "Received from planner: " << last_planner_message_);
     }
 
     void recv_callback(std::string recv_msg) {
         // Распарсить сообщение на разные данные и запостить в топики нужно будет где-то здесь
+        RCLCPP_INFO_STREAM(this->get_logger(), "OK ");
         FromBort* rec = (FromBort*)recv_msg.data();
         auto message = udp_publisher::msg::FromBort();
     
@@ -104,6 +108,7 @@ private:
         // В QT было: sendSocket->writeDatagram((char *)&send_data, sizeof(send_data),m_ip_sender, m_port_sender);
 
         // assert(!last_planner_message_.empty());
+        //std::cout << last_planner_message_;
         udp_client_.send(last_planner_message_);
         
     }
